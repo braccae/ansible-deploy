@@ -1,0 +1,180 @@
+---
+
+- name: Write Default Borgmatic Config
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/borgmatic/config.yaml
+    src: files/services/backup/config/config.yaml
+    owner: root
+    group: root
+    mode: '600'
+    force: true
+
+- name: Ensure borgmatic.service.d directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/borgmatic.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure Backup runtime directory
+  become: true
+  ansible.builtin.copy:
+    content: |
+      d /run/backup 0777 backup backup -
+    dest: /etc/tmpfiles.d/borgmatic-user-runtime.conf
+    group: root
+    mode: '755'
+
+- name: Activate systemd-tmpfiles
+  become: true
+  ansible.builtin.command:
+    argv:
+      - systemd-tmpfiles
+      - --create
+      - --prefix=/run/backup
+    creates: /tmp/backup
+
+- name: Ensure SELinux fcontext for /run/backup is container_file_t
+  # This command adds or modifies an fcontext rule for /run/backup(/.*)?
+  # The /.* is important to apply it to subdirectories and files as well.
+  community.general.sefcontext:
+    target: "/run/backup(/.*)?"
+    setype: container_file_t
+    state: present
+
+- name: Configure borgmatic service override
+  become: true
+  ansible.builtin.blockinfile:
+    dest: /etc/systemd/system/borgmatic.service.d/override.conf
+    block: |
+      [Service]
+      User=root
+      RuntimeDirectory=backup/borgmatic
+      CapabilityBoundingSet=~
+      LoadCredentialEncrypted=borgmatic:/etc/credstore.encrypted/borgmatic/
+      LoadCredentialEncrypted=centraldb:/etc/credstore.encrypted/centraldb/
+      MemoryDenyWriteExecute=false
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create Borgmatic Credential Folder
+  become: true
+  ansible.builtin.file:
+    dest: /etc/credstore.encrypted/borgmatic
+    owner: root
+    group: root
+    mode: '754'
+    state: directory
+
+- name: Add Systemd Secret - Borgmatic Encryption Passphrase
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: >-
+      set -o pipefail &&
+      printf %s "{{ borgmatic.secrets.ENCRYPTION_PASSPHRASE }}" |
+      systemd-creds encrypt --name=borgmatic.pw - /etc/credstore.encrypted/borgmatic.pw
+  # no_log: true
+    creates: /etc/credstore.encrypted/borgmatic.pw
+
+- name: Create Borg SSH Key for Host
+  community.crypto.openssh_keypair:
+    state: present
+    type: "ed25519"
+    path: /root/.ssh/borg
+    regenerate: full_idempotence
+    owner: root
+    group: root
+    mode: '600'
+  register: borg_ssh
+
+# - name: Configure repository in BorgWarehouse.
+#   rarrais.borgwarehouse.repository:
+#     url: https://borg.leo-banjo.ts.net
+#     api_token: "{{ secrets.borgwarehouse_api_token }}"
+#     alias: "{{ inventory_hostname }}"
+#     ssh_public_key: "{{ borg_ssh.public_key }}"
+#     storageSize: 50
+#   register: warehouse
+#   throttle: 1
+
+# - name: Set Facts - Borg Warehouse URI
+#   when: borgmatic.vars.REPO_NAME is defined
+#   ansible.builtin.set_fact:
+#     cacheable: true
+#     repo_uri: 'ssh://borgwarehouse@borg.{{ secrets.tailscale_subdomain }}.ts.net/./{{ borgmatic.vars.REPO_NAME }}'
+
+# - name: Set Facts - Borg Warehouse URI
+#   when: warehouse.repository.repositoryName is defined
+#   ansible.builtin.set_fact:
+#     cacheable: false
+#     repo_uri: 'ssh://borgwarehouse@borg.{{ secrets.tailscale_subdomain }}.ts.net/./{{ warehouse.repository.repositoryName }}'
+
+- name: Create key in borgbase
+  adhawkins.borgbase.borgbase_ssh:
+    state: present
+    apikey: "{{ secrets.borgbase_api }}"
+    name: "ansible@{{ ansible_hostname }}"
+    key: "{{ borg_ssh.public_key }}"
+  register: borgbase_key
+
+- name: Create repo
+  adhawkins.borgbase.borgbase_repo:
+    state: present
+    apikey: "{{ secrets.borgbase_api }}"
+    name: "{{ ansible_hostname }}"
+    full_access_keys: []
+    quota_enabled: true
+    quota: 51200
+    alert_days: 1
+    append_only: true
+    append_only_keys: ["{{ borgbase_key.key_id }}"]
+  register: borgbase_repo
+
+- name: Set borgbackup_ssh_host
+  ansible.builtin.set_fact:
+    repo_uri: "ssh://{{ borgbase_repo.repo_id }}@{{ borgbase_repo.repo_id }}.repo.borgbase.com/./repo"
+
+- name: Template Common Borgmatic Config
+  become: true
+  ansible.builtin.template:
+    dest: /etc/borgmatic/common.yaml
+    src: files/services/backup/config/common.yaml
+    owner: root
+    group: root
+    mode: '600'
+    force: true
+
+- name: Init Borg repo
+  environment:
+    BORG_PASSPHRASE: '{{ borgmatic.secrets.ENCRYPTION_PASSPHRASE }}'
+  ansible.builtin.command:
+    argv:
+      - borg
+      - init
+      - --show-rc
+      - --log-json
+      - --debug
+      - --encryption
+      - repokey-blake2
+      - --rsh
+      - 'ssh -o StrictHostKeyChecking=accept-new -i /root/.ssh/borg'
+      - '{{ repo_uri }}'
+  # when: result.rc == 2
+  register: result
+  throttle: 1
+  changed_when: result.rc == 0
+  failed_when: result.rc == 2 and 'A repository already exists at' not in result.stderr or result.rc != 2 and result.rc != 0
+
+- name: Enable Borgmatic
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    name: borgmatic.timer
+    state: "started"

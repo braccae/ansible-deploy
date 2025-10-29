@@ -1,0 +1,16 @@
+[Unit]
+Description=tailscale connection for Vaultwarden
+Requires=podman-user-wait-network-online.service
+
+[Container]
+Image=ghcr.io/boinkor-net/tsnsrv:latest
+AutoUpdate=registry
+Exec=-name vaultwarden -stateDir /data/ts -authkeyPath /run/secrets/ts_proxykey -tsnetVerbose=false -tag tag:app http://127.0.0.1:80
+Secret=ts_proxykey
+Pod=vaultwarden.pod
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

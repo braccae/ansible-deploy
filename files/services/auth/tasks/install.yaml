@@ -1,0 +1,176 @@
+---
+- name: Ensure Quadlet directory
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/auth"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Template Quadlet - Pod
+  become: true
+  ansible.builtin.template:
+    src: ../quadlets/auth.pod
+    dest: "/var/home/{{ user }}/.config/containers/systemd/auth/auth.pod"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Template Quadlet - Valkey
+  become: true
+  ansible.builtin.template:
+    src: ../quadlets/auth-valkey.container
+    dest: "/var/home/{{ user }}/.config/containers/systemd/auth/auth-valkey.container"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Template Quadlet - auth worker
+  become: true
+  ansible.builtin.template:
+    src: ../quadlets/auth-server.container
+    dest: "/var/home/{{ user }}/.config/containers/systemd/auth/auth-server.container"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Template Quadlet - auth worker
+  become: true
+  ansible.builtin.template:
+    src: ../quadlets/auth-worker.container
+    dest: "/var/home/{{ user }}/.config/containers/systemd/auth/auth-worker.container"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Media Directory
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/auth/media"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Certs Directory
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/auth/certs"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Templates Directory
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/auth/templates"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Valkey Directory
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/auth/valkey"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Add Secret - Authentik PG_PASS
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: authentik_db_pass
+    data: "{{ authentik.secrets.PG_PASS }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - Authentik Secret Key
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: authentik_secret_key
+    data: "{{ authentik.secrets.AUTHENTIK_SECRET_KEY }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - Authentik Email Host
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: authentik_email_host
+    data: "{{ authentik.secrets.EMAIL_HOST }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - Authentik Email Username
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: authentik_email_username
+    data: "{{ authentik.secrets.EMAIL_USERNAME }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - Authentik Email Password
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: authentik_email_password
+    data: "{{ authentik.secrets.EMAIL_PASSWORD }}"
+    state: present
+    skip_existing: false
+
+- name: Create User
+  community.postgresql.postgresql_user:
+    name: authentik
+    password: "{{ authentik.secrets.PG_PASS }}"
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+
+- name: Create database
+  community.postgresql.postgresql_db:
+    login_unix_socket: /run/postgres
+    # login_host:
+    login_user: admin
+    login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+    name: authentik
+    owner: authentik
+    state: present
+
+
+- name: Proxy Dropin - auth
+  become: true
+  vars:
+    base_url: "{{ authentik.vars.BASE_URL }}"
+  ansible.builtin.template:
+    src: ../config/auth.caddyfile
+    dest: /var/home/proxy/appdata/caddy/caddyfile.d/auth.caddyfile
+    owner: proxy
+    group: proxy
+    mode: "755"
+
+- name: Backup Dropin - auth
+  become: true
+  ansible.builtin.template:
+    src: ../config/backup.yaml
+    dest: /etc/borgmatic.d/auth.yaml
+    owner: root
+    group: root
+    mode: "755"
+
+- name: Start auth
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: auth-pod
+    state: "started"

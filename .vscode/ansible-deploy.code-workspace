@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"ansible.python.interpreterPath": "/var/home/andrew/.local/python/ansible/bin/python"
+	}
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=Central MongoDB
+After=network-online.target
+
+[Container]
+Image=docker.io/mongo:8
+AutoUpdate=registry
+
+User=2500:2500
+
+Pod=central-db.pod
+# PublishPort=27017:27017
+
+Volume=/var/home/db/appdata/mongo:/data/db:Z
+
+Environment=MONGO_INITDB_ROOT_USERNAME=root
+
+Secret=central_db_mongo,type=env,target=MONGO_INITDB_ROOT_PASSWORD
+
+[Service]
+Restart=always

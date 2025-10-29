@@ -1,0 +1,40 @@
+[Unit]
+Description='InfluxDB 3 Core Central Database'
+# Requires=postgres.socket
+After=multi-user.target
+
+[Service]
+ExecStartPre=
+
+[Container]
+Image=docker.io/influxdb:3-core
+AutoUpdate=registry
+
+User=2500:2500
+
+Pod=central-db.pod
+StartWithPod=false
+# PublishPort=24534:24534
+
+Volume=/var/home/db/appdata/influx/data:/var/lib/influxdb3/data:Z
+Volume=/var/home/db/appdata/influx/plugins:/var/lib/influxdb3/plugins:z
+
+Environment=INFLUXDB3_HTTP_BIND_ADDR=0.0.0.0:24534
+Environment=INFLUXDB3_OBJECT_STORE=file
+Environment=INFLUXDB3_NODE_IDENTIFIER_PREFIX=%l
+Environment=INFLUXDB3_DB_DIR=/var/lib/influxdb3/data
+Environment=INFLUXDB3_PLUGIN_DIR=/var/lib/influxdb3/plugins
+
+HealthCmd="curl -f http://127.0.0.1:24534/ping"
+HealthStartupInterval=20s
+HealthInterval=30s
+HealthTimeout=3s
+HealthRetries=5
+HealthStartPeriod=20s
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+# [Install]
+# WantedBy=multi-user.target

@@ -1,0 +1,28 @@
+[Unit]
+Description=Embedding Model for OpenwebUI
+After=podman-user-wait-network-online.service
+
+[Container]
+Environment=GGML_VK_VISIBLE_DEVICES=0
+Environment=LLAMA_ARG_N_GPU_LAYERS=99
+Environment=LLAMA_ARG_MAIN_GPU=0
+Environment=LLAMA_ARG_HF_REPO={{ embedding_model }}
+Environment=LLAMA_ARG_ALIAS={{ embedding_model }}
+Environment=LLAMA_ARG_HOST=0.0.0.0
+Environment=LLAMA_ARG_PORT=6418
+Exec=--server --jinja
+Image=ghcr.io/ggml-org/llama.cpp:full-vulkan
+AutoUpdate=registry
+PodmanArgs=--cpu-shares 512
+Volume=%h/appdata/openwebui/llm_models:/root/.cache/llama.cpp:z
+Volume=/dev/dri:/dev/dri
+Pod=openwebui.pod
+
+# PublishPort=6418:6418
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,30 @@
+[Unit]
+Description=Reverse Proxy for Tailscale
+
+[Container]
+Image=docker.io/almeidapaulopt/tsdproxy:2
+AutoUpdate=registry
+
+# PublishPort=7467:8080
+Network=host
+
+Environment=STATE_DIRECTORY=/data
+
+PodmanArgs=--security-opt label=disable
+
+Volume=/var/run/docker.sock:/var/run/docker.sock
+Volume=/var/run/podman/podman.sock:/var/run/podman/podman.sock
+Volume=/run/user/1000/podman/podman.sock:/run/user/1000/podman/podman.sock
+Volume=/var/appdata/proxy/tsd/data:/data:z
+Volume=/var/appdata/proxy/tsd/config:/config:z
+
+HealthCmd=/healthcheck
+HealthInterval=30s
+HealthRetries=3
+HealthTimeout=5s
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+[Unit]
+Description=cloudflare Tunnel Daemon
+After=network-online.target
+Requires=network-online.target
+
+[Container]
+Exec=tunnel --no-autoupdate run --token $TUNNEL_TOKEN
+Image=docker.io/cloudflare/cloudflared:latest
+AutoUpdate=registry
+Network=host
+Secret=cf_tunnel,type=env,target=TUNNEL_TOKEN
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=multi-user.target

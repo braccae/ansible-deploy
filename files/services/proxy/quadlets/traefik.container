@@ -1,0 +1,33 @@
+[Unit]
+Description=Traefik Load Balancer
+After=crowdsec.service
+
+[Container]
+Image=docker.io/traefik:3
+AutoUpdate=registry
+# User=2600:2600
+# UIDMap=1000:2600:1
+LogDriver=journald
+
+# PublishPort=80:80
+# PublishPort=443:443
+
+# # Expose ports from crowdsec security engine
+# ExposeHostPort=8080
+# ExposeHostPort=6060
+Network=host
+Volume=/var/appdata/traefik/traefik.yml:/etc/traefik/traefik.yml:z
+Volume=/var/appdata/traefik/traefik.d/:/etc/traefik/traefik.d:ro,z
+
+# HealthCmd=wget -q -s --server-response http://localhost/healthz && exit 0 || exit 1
+# HealthInterval=10s
+# HealthTimeout=20s
+# HealthRetries=3
+# HealthStartPeriod=60s
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=multi-user.target

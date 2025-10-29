@@ -1,0 +1,34 @@
+[Unit]
+Description=i2p border router
+
+[Container]
+Environment=JVM_XMX=1024m
+Image=docker.io/purplei2p/i2pd:latest
+AutoUpdate=registry
+NoNewPrivileges=yes
+
+Environment=EXT_PORT=49573
+
+PublishPort=4444:4444
+PublishPort=6668:6668
+PublishPort=7655:7655
+PublishPort=7656:7656
+PublishPort=2827:2827
+PublishPort=7654:7654
+PublishPort=7070:7070
+PublishPort=49573:49573
+PublishPort=49573:49573/udp
+Volume=/var/appdata/i2p/i2pd:/home/i2pd/data:z
+# Volume=/var/appdata/i2p/i2phome:/i2p/.i2p:z
+# Volume=/var/appdata/i2p/i2ptorrents:/i2psnark:z
+
+# HealthCmd=/healthcheck
+# HealthInterval=30s
+# HealthRetries=3
+# HealthTimeout=5s
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

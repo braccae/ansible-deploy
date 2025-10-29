@@ -1,0 +1,19 @@
+[Unit]
+Description=Unifi Network Application
+Requires=network-online.target
+After=network-online.target
+
+[Pod]
+Network=unifi.network
+
+IP=192.168.1.250
+
+# PublishPort=8443:8443
+# PublishPort=3478:3478/udp
+# PublishPort=10001:10001/udp
+# PublishPort=8080:8080
+# PublishPort=1900:1900/udp
+# PublishPort=8843:8843
+# PublishPort=8880:8880
+# PublishPort=6789:6789
+# PublishPort=5514:5514/udp

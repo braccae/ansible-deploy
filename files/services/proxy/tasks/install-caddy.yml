@@ -1,0 +1,125 @@
+---
+- name: Copy Quadlet
+  become: true
+  ansible.builtin.copy:
+    src: files/services/proxy/quadlets/caddy.container
+    dest: /etc/containers/systemd
+    owner: root
+    group: root
+    mode: '755'
+
+- name: Create Caddyfile Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/caddy/caddyfile.d
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+- name: Create Config Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/caddy/config
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+- name: Create Data Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/caddy/data
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+# - name: Create Caddyfile Folder
+#   become: true
+#   ansible.builtin.file:
+#     dest: /var/appdata/caddy/caddyfile.d
+#     owner: root
+#     group: proxy
+#     mode: '775'
+#     state: directory
+
+# - name: Create Data Folder
+#   become: true
+#   ansible.builtin.file:
+#     dest: /var/appdata/caddy/data
+#     owner: root
+#     group: proxy
+#     mode: '775'
+#     state: directory
+
+- name: Add Secret - admin email
+  become: true
+  # become_user: proxy
+  containers.podman.podman_secret:
+    name: admin_email
+    data: "{{ secrets.admin_email }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - cloudflare api token
+  become: true
+  # become_user: proxy
+  containers.podman.podman_secret:
+    name: caddy_cf_api_token
+    data: "{{ caddy.secrets.CF_API_TOKEN }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - crowdsec api key
+  become: true
+  containers.podman.podman_secret:
+    name: crowdsec_api_key
+    data: "{{ caddy.secrets.CROWDSEC_API_KEY }}"
+    state: present
+    skip_existing: false
+
+# - name: Register Bouncer in Crowdsec
+#   become: true
+#   containers.podman.podman_container_exec:
+#     name: systemd-crowdsec
+#     argv:
+#       - cscli
+#       - bouncers
+#       - add
+#       - caddy-bouncer
+#       - --key
+#       - "{{ caddy.secrets.CROWDSEC_API_KEY }}"
+#   register: result
+#   failed_when: result.rc != 0 and not (result.rc == 1 and 'already exists' in result.stderr)
+
+- name: Allow http in Public Zone
+  ansible.posix.firewalld:
+    state: enabled
+    zone: public
+    service: "http"
+    immediate: true
+    permanent: true
+
+- name: Allow http2 in Public Zone
+  ansible.posix.firewalld:
+    state: enabled
+    zone: public
+    service: "http3"
+    immediate: true
+    permanent: true
+
+- name: Allow https in Public Zone
+  ansible.posix.firewalld:
+    state: enabled
+    zone: public
+    service: "https"
+    immediate: true
+    permanent: true
+
+- name: Start Caddy
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    name: caddy.service
+    state: "restarted"

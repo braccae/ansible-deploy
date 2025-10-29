@@ -1,0 +1,12 @@
+{% if domain and upstream %}
+{{ domain }} {
+    log
+    reverse_proxy https://{{ upstream }} {
+        transport http {
+            tls_insecure_skip_verify
+        }
+    }
+}
+{% else %}
+# Error: domain and upstream variables are required
+{% endif %}

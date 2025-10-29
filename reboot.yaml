@@ -1,0 +1,18 @@
+---
+- name: Reboot
+  hosts: coreos
+  become: true
+  tasks:
+    - name: Bootc Upgrade
+      vars:
+        bootc: true
+      ansible.builtin.command:
+        argv:
+          - bootc
+          - upgrade
+      changed_when: bootc
+
+    - name: Reboot systems
+      ansible.builtin.reboot:
+        reboot_command: 'systemctl reboot'
+        reboot_timeout: 1200

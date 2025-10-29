@@ -1,0 +1,68 @@
+---
+- name: Init Service Users
+  hosts: openmediavault
+  remote_user: omv-admin
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  become: true
+  tasks:
+    - name: Create Groups
+      become: true
+      ansible.builtin.group:
+        name: "{{ item.name }}"
+        gid: "{{ item.gid | default(omit) }}"
+        state: present
+      loop: "{{ service_users
+        | rejectattr('name', 'equalto', 'core')
+        | rejectattr('name', 'equalto', 'borg')
+        | list }}"
+
+    - name: Create users
+      become: true
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        uid: "{{ item.uid | default(omit) }}"
+        group: "{{ item.name }}"
+        state: present
+      loop: "{{ service_users
+        | rejectattr('name', 'equalto', 'core')
+        | rejectattr('name', 'equalto', 'borg')
+        | list }}"
+
+    - name: Create User Folders
+      become: true
+      ansible.builtin.file:
+        dest: "/var/home/{{ item.name }}/.config/containers/systemd"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: '0777'
+      loop: "{{ service_users
+        | rejectattr('name', 'equalto', 'core')
+        | rejectattr('name', 'equalto', 'borg')
+        | list }}"
+
+    - name: Create Appdata Folders
+      become: true
+      ansible.builtin.file:
+        dest: "/var/home/{{ item.name }}/appdata"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: '0740'
+      loop: "{{ service_users
+        | rejectattr('name', 'equalto', 'core')
+        | rejectattr('name', 'equalto', 'borg')
+        | list }}"
+
+    - name: Set authorized key for service users
+      become: true
+      ansible.posix.authorized_key:
+        user: "{{ item.name }}"
+        state: present
+        key: "{{ item.authorized_key }}"
+      loop: "{{ service_users
+        | rejectattr('name', 'equalto', 'core')
+        | rejectattr('name', 'equalto', 'borg')
+        | list }}"
+      when: item.authorized_key is defined and item.authorized_key != ''

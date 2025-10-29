@@ -1,0 +1,24 @@
+[Container]
+Environment=DEEMIX_SERVER_PORT=6595
+Environment=DEEMIX_DATA_DIR=/config
+Environment=DEEMIX_MUSIC_DIR=/downloads
+Environment=DEEMIX_HOST=0.0.0.0
+Environment=DEEMIX_SINGLE_USER=true
+Environment=PUID=2700
+Environment=PGID=2700
+Environment=UMASK_SET=022
+Image=ghcr.io/bambanah/deemix:latest
+AutoUpdate=registry
+PodmanArgs=--memory 2gb
+UserNS=keep-id
+# User=2700:2700
+PublishPort=6595:6595
+Volume=%h/appdata/deemix:/config:z
+Volume=/mnt/HDD/Media/Music/Loose:/downloads
+
+[Service]
+Restart=always
+TimeoutSec=6000
+
+[Install]
+WantedBy=default.target

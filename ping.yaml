@@ -1,0 +1,11 @@
+---
+- name: Setup Services
+  become: true
+  hosts: ping
+  tasks:
+    - name: Setup Rootful Services
+      vars:
+        db_pass: "unifi.secrets.UNIFI_DB"
+        network_interface: enp0s31f6
+        ansible_python_interpreter: /home/ansible/venv/bin/python
+      ansible.builtin.include_tasks: files/services/unifi/tasks/install.yaml

@@ -1,0 +1,18 @@
+[Unit]
+Description=Vaultwarden main application
+Requires=podman-user-wait-network-online.service
+
+[Container]
+Environment=DOMAIN=https://vaultwarden.{{ secrets.ts_handle }}.ts.net
+Image=quay.io/vaultwarden/server:latest-alpine
+AutoUpdate=registry
+
+# Environment=DATABASE_URL=postgresql://[[user]:[password]@]host[:port][/database]
+Secret=vaultwarden_db,type=env,target=DATABASE_URL
+Pod=vaultwarden.pod
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

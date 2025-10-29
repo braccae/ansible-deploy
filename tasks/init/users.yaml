@@ -1,0 +1,179 @@
+---
+- name: Create Groups
+  become: true
+  ansible.builtin.group:
+    name: "{{ item.name }}"
+    gid: "{{ item.gid | default(omit) }}"
+    state: present
+  loop: "{{ service_users }}"
+
+- name: Create users
+  become: true
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    uid: "{{ item.uid | default(omit) }}"
+    group: "{{ item.name }}"
+    state: present
+  loop: "{{ service_users }}"
+
+- name: Create User Folders
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ item.name }}/.config/containers/systemd"
+    state: directory
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: '0740'
+  loop: "{{ service_users }}"
+
+- name: Ensure User SubUID
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/subuid
+    line: "{{ item.name }}:{{ item.uid * 1000 }}:65536"
+    create: true
+    state: present
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ service_users }}"
+  when: item.linger
+
+- name: Ensure User SubGID
+  become: true
+  ansible.builtin.lineinfile:
+    dest: /etc/subgid
+    line: "{{ item.name }}:{{ item.uid * 1000 }}:65536"
+    create: true
+    state: present
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ service_users }}"
+  when: item.linger
+
+# - name: Create btrfs subvolumes manually
+#   block:
+    # - name: Create subvolumes for service users
+    #   ansible.builtin.command:
+    #     cmd: btrfs subvolume create /var/home/{{ item.name }}/appdata
+    #     creates: /var/home/{{ item.name }}/appdata
+    #   loop: "{{ service_users }}"
+    # - name: Create root appdata subvolume
+    #   ansible.builtin.command:
+    #     cmd: btrfs subvolume create /var/appdata
+    #     creates: /var/appdata
+
+    # - name: Set permissions on appdata subvolumes
+    #   ansible.builtin.file:
+    #     path: "/var/home/{{ item.name }}/appdata"
+    #     owner: "{{ item.name }}"
+    #     group: "{{ item.name }}"
+    #     mode: "0700"
+    #     state: directory
+    #   loop: "{{ service_users }}"
+    #   loop_control:
+    #     label: "{{ item.name }}"
+
+- name: Enable Linger for service users
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/loginctl
+      - enable-linger
+      - "{{ item.name }}"
+    creates: "/var/lib/systemd/linger/{{ item.name }}"
+  loop: "{{ service_users }}"
+  when: item.linger
+
+- name: Enable Podman socket for lingering service users
+  become: true
+  become_user: "{{ item.name }}"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: podman.socket
+    enabled: true
+  loop: "{{ service_users }}"
+  when: item.linger
+
+- name: Disable Podman service for lingering service users
+  become: true
+  become_user: "{{ item.name }}"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: podman.service
+    enabled: false
+  loop: "{{ service_users }}"
+  when: item.linger
+
+- name: Enable Podman auto update timer for lingering service users
+  become: true
+  become_user: "{{ item.name }}"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: podman-auto-update.timer
+    enabled: true
+  loop: "{{ service_users }}"
+  when: item.linger
+
+- name: Enable Podman restart.service for lingering service users
+  become: true
+  become_user: "{{ item.name }}"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: podman-restart.service
+    enabled: true
+  loop: "{{ service_users }}"
+  when: item.linger
+
+- name: Enable Podman clean-transient.service for lingering service users
+  become: true
+  become_user: "{{ item.name }}"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: podman-clean-transient.service
+    enabled: true
+  loop: "{{ service_users }}"
+  when: item.linger
+
+- name: Enable Podman auto update timer for system
+  become: true
+  ansible.builtin.systemd_service:
+    name: podman-auto-update.timer
+    enabled: true
+
+- name: Enable Podman restart.service for system
+  become: true
+  ansible.builtin.systemd_service:
+    name: podman-restart.service
+    enabled: true
+
+- name: Enable Podman clean-transient.service for system
+  become: true
+  ansible.builtin.systemd_service:
+    name: podman-clean-transient.service
+    enabled: true
+
+- name: Add Ansible user to wheel group
+  become: true
+  ansible.builtin.user:
+    append: true
+    name: ansible
+    groups:
+      - wheel
+
+# - name: TMP Remove old venv created by uv
+#   ansible.builtin.file:
+#     path: /var/home/ansible/venv
+#     state: absent
+
+- name: Ensure python venv for ansible
+  become: true
+  become_user: ansible
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -m
+      - venv
+      - /home/ansible/venv
+    creates: /home/ansible/venv

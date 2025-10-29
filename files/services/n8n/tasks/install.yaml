@@ -1,0 +1,172 @@
+---
+- name: Ensure Quadlet directory
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/n8n"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Copy n8n container
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/n8n/n8n.container"
+    src: ../quadlets/n8n.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy pod
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/n8n/n8n.pod"
+    src: ../quadlets/n8n.pod
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy valkey
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/n8n/n8n-valkey.container"
+    src: ../quadlets/n8n-valkey.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy runner
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/n8n/n8n-runner.container"
+    src: ../quadlets/n8n-runner.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Appdir - Rootless
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/n8n/data"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+# - name: Copy Quadlets - Rootful
+#   when: user == 'root'
+#   ansible.builtin.template:
+#     dest: /etc/containers/systemd/n8n.container
+#     src: ../quadlets/n8n.container
+#     owner: root
+#     group: root
+#     mode: '755'
+
+# - name: Ensure Appdir
+#   when: user == 'root'
+#   ansible.builtin.file:
+#     dest: /var/appdata/n8n/data
+#     owner: root
+#     group: root
+#     mode: '755'
+#     state: directory
+
+- name: Ensure Valkey Appdir
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/n8n/valkey"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Add Secret - DB Pass
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: n8n_postgres_pass
+    data: "{{ db_pass }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - n8n Encryption Key
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: n8n_encryption_key
+    data: "{{ encryption_key }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - n8n runner auth token
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: n8n-runner-auth-token
+    data: "{{ runner_auth_token }}"
+    state: present
+    skip_existing: false
+
+- name: Create User
+  when: init
+  community.postgresql.postgresql_user:
+    name: n8n
+    password: "{{ n8n.secrets.DB_PASS }}"
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ db_admin_pass }}"
+
+- name: Create database
+  when: init
+  community.postgresql.postgresql_db:
+    login_unix_socket: /run/postgres
+    # login_host:
+    login_user: admin
+    login_password: "{{ db_admin_pass }}"
+    name: app_n8n
+    owner: n8n
+    state: present
+
+
+# - name: Restore database
+#   when: "{{ restore == true }}"
+
+- name: Start n8n
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: n8n-pod
+    state: "restarted"
+
+- name: Proxy Dropin - n8n
+  become: true
+  ansible.builtin.template:
+    src: ../config/n8n.caddyfile
+    dest: /var/home/proxy/appdata/caddy/caddyfile.d/20-n8n.caddyfile
+    owner: proxy
+    group: proxy
+    mode: '755'
+
+- name: Backup Dropin - n8n
+  become: true
+  ansible.builtin.template:
+    src: ../config/backup.yaml
+    dest: /etc/borgmatic.d/20-n8n.yaml
+    owner: root
+    group: root
+    mode: '755'
+
+- name: Reload Caddy
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: false
+    name: caddy
+    state: "restarted"

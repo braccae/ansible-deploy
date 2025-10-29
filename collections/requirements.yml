@@ -1,0 +1,19 @@
+---
+collections:
+  - name: ansible.posix
+  - name: ansible.scm
+  - name: ansible.utils
+  - name: containers.podman
+  - name: community.general
+  - name: community.postgresql
+  # - name: rarrais.borgwarehouse
+  - name: https://github.com/braccae/ansible-borgwarehouse.git
+    type: git
+
+  - name: community.postgresql
+    version: 3.12.0
+
+  # TO-DO: User's own collections can also be specified as mention below.
+  # - name: my_organization.my_collection
+  #   version: 1.2.3
+  #   source: https://github.com/my_organization/my_collection.git

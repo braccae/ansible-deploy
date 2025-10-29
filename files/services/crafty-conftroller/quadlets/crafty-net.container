@@ -1,0 +1,22 @@
+[Unit]
+Description=tailscale for crafty controller
+
+[Container]
+Pod=crafty.pod
+Image=ghcr.io/tailscale/tailscale:latest
+AutoUpdate=registry
+
+AddDevice=/dev/net/tun:/dev/net/tun
+AddCapability=net_admin
+
+Secret=crafty_tskey,type=env,target=TS_AUTHKEY
+Environment=TS_EXTRA_ARGS=
+Environment=TS_STATE_DIR=/var/lib/tailscale
+
+Timezone=America/New_York
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,33 @@
+[Unit]
+Description=Caddy
+After=network-online.target
+
+[Container]
+ContainerName=caddy
+
+Image=ghcr.io/braccae/caddy:latest
+AutoUpdate=registry
+
+Exec=caddy run --config /config/Caddyfile
+PublishPort=80:80
+PublishPort=443:443
+Volume=%h/appdata/caddy/certs:/certs
+Volume=%h/appdata/caddy/config:/config
+Volume=%h/appdata/caddy/data:/data
+Volume=%h/appdata/caddy/logs:/logs
+Volume=%h/appdata/caddy/sites:/srv
+
+# Environment=<KEY>=<VALUE>
+
+Restart=on-failure
+
+User=proxy
+
+# HealthCmd=<command>
+# HealthInterval=<duration>
+# HealthTimeout=<duration>
+# HealthRetries=<number>
+# HealthStartPeriod=<duration>
+
+[Install]
+WantedBy=multi-user.target

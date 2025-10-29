@@ -1,0 +1,4 @@
+<<: !include /etc/borgmatic/common.yaml
+
+source_directories:
+    - /etc/hostname

@@ -1,0 +1,65 @@
+---
+- name: Ensure Quadlet subdir
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/it-tools"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Template it-tools Quadlet
+  become: true
+  ansible.builtin.copy:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/it-tools/it-tools.container"
+    src: ../quadlets/it-tools.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '644'
+
+- name: Template tsnsrv Quadlet
+  become: true
+  vars:
+    service_name: it-tools
+    internal_port: 80
+  ansible.builtin.template:
+    src: quadlets/tsnsrv.container.j2
+    dest: "/var/home/{{ user }}/.config/containers/systemd/it-tools/it-tools-tsnsrv.container"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '644'
+
+- name: Copy it-tools Pod Quadlet
+  become: true
+  ansible.builtin.copy:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/it-tools/it-tools.pod"
+    src: ../quadlets/it-tools.pod
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '644'
+
+- name: Ensure Secret - ts proxykey
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: ts_proxykey
+    data: "{{ ts_proxykey }}"
+    state: present
+    skip_existing: false
+
+- name: Start it-tools
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: it-tools
+    state: "started"
+
+# - name: Reload Caddy
+#   become: true
+#   ansible.builtin.systemd_service:
+#     daemon_reload: false
+#     name: caddy
+#     state: "restarted"

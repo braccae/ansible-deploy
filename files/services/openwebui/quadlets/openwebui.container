@@ -1,0 +1,25 @@
+[Unit]
+Description=Open WebUI
+After=podman-user-wait-network-online.service
+
+[Container]
+Image=ghcr.io/open-webui/open-webui:main
+AutoUpdate=registry
+# PublishPort=8000:8080
+Pod=openwebui.pod
+
+# Environment=OLLAMA_BASE_URL=http://ollama:11434
+Environment=WEBUI_URL={{ base_url }}
+
+Secret=openwebui_secret_key,type=env,target=WEBUI_SECRET_KEY
+Secret=openwebui_db_url,type=env,target=PGVECTOR_DB_URL
+# Environment=WEBUI_SECRET_KEY=
+
+Volume=%h/appdata/openwebui/config:/app/backend/data:z
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

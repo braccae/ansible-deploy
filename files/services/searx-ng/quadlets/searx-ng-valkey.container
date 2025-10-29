@@ -1,0 +1,48 @@
+[Unit]
+Description=Pants' Place Search Valkey instance
+After=podman-user-wait-network-online.service
+
+[Container]
+ContainerName=searx-ng-valkey
+AutoUpdate=registry
+Image=docker.io/valkey/valkey:8-alpine
+Exec=valkey-server --save 30 1 --loglevel warning
+Pod=search.pod
+
+User={{ uid }}:{{ gid }}
+
+Volume=%h/appdata/search/valkey:/data:z
+# Notify=true
+# Optional: Specify the network to connect to.
+# Defaults to bridge. Can be a network name or ID.
+# Network=<network-name>
+
+LogDriver=k8s-file
+LogOpt=max-size=1m
+
+PodmanArgs=--memory=1024M
+# CPUShares=<value>
+
+# Optional: Specify the user to run the container as.
+# Format: <user>[:<group>] (can be name or UID/GID)
+# User=<user>
+
+# Optional: Set the working directory inside the container.
+# WorkingDirectory=<path>
+
+# Optional: Add healthcheck configuration
+# See Podman documentation for details on healthcheck options.
+# HealthcheckCmd=<command>
+# HealthcheckInterval=<duration>
+# HealthcheckTimeout=<duration>
+# HealthcheckRetries=<number>
+# HealthcheckStartPeriod=<duration>
+
+[Service]
+Restart=always
+
+[Install]
+# This section defines how the service is enabled to start at boot.
+# multi-user.target is the standard target for services that should run
+# when the system is fully booted for multi-user operation.
+WantedBy=default.target

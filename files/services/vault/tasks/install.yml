@@ -1,0 +1,100 @@
+---
+- name: Copy Quadlet
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/vault.container
+    src: files/quadlets/vault/vault.container
+    owner: root
+    group: root
+    mode: '755'
+
+- name: Ensure Appdir
+  ansible.builtin.file:
+    dest: /var/appdata/vault/data
+    owner: root
+    group: root
+    mode: '755'
+    state: directory
+
+- name: Add Secret - DB Pass
+  become: true
+  containers.podman.podman_secret:
+    name: vault_postgres_pass
+    data: "{{ vault.secrets.DB_PASS }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - vault Encryption Key
+  become: true
+  become_user: root
+  containers.podman.podman_secret:
+    name: vault_encryption_key
+    data: "{{ vault.secrets.vault_ENCRYPTION_KEY }}"
+    state: present
+    skip_existing: false
+
+- name: Ensure DB User
+  when: init
+  community.postgresql.postgresql_user:
+    name: vault
+    password: "{{ vault.secrets.DB_PASS }}"
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+
+- name: Ensure database
+  when: init
+  community.postgresql.postgresql_db:
+    login_unix_socket: /run/postgres
+    # login_host:
+    login_user: admin
+    login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+    name: app_vault
+    owner: vault
+    state: present
+
+- name: Create vault table
+  when: init
+  community.postgresql.postgresql_table:
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+    db: app_vault
+    name: vault_kv_store
+    columns:
+      - name: parent_path
+        type: TEXT
+        collate: C
+        not_null: true
+      - name: path
+        type: TEXT
+        collate: C
+      - name: key
+        type: TEXT
+        collate: C
+      - name: value
+        type: BYTEA
+    primary_key:
+      - path
+      - key
+
+- name: Create index on parent_path
+  when: init
+  community.postgresql.postgresql_idx:
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+    db: app_vault
+    table: vault_kv_store
+    columns:
+      - parent_path
+
+# - name: Restore database
+#   when: "{{ restore == true }}"
+
+- name: Start vault
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: vault
+    state: "started"

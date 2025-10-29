@@ -1,0 +1,16 @@
+[Unit]
+Description=Example echo socket
+
+[Socket]
+ListenStream=127.0.0.1:5432
+ListenDatagram=127.0.0.1:5432
+ListenStream=[::1]:5432
+ListenDatagram=[::1]:5432
+ListenStream=/run/postgres/centraldb.socket
+
+# VMADDR_CID_ANY (-1U) = 2^32 -1 = 4294967295
+# See "man vsock"
+ListenStream=vsock:4294967295:5432
+
+[Install]
+WantedBy=sockets.target

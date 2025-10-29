@@ -1,0 +1,8 @@
+[Unit]
+Description=Open WebUI AI
+
+[Pod]
+# PodName=openwebui.pod
+
+Network=pasta:-T,5432:5432
+PublishPort=8701:8080

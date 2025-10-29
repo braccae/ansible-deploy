@@ -1,0 +1,12 @@
+[Unit]
+Description=Unifi Macvlan
+Requires=network-online.target
+After=network-online.target
+
+[Network]
+Driver=macvlan
+Options=parent="{{ network_interface }}"
+
+
+Gateway=192.168.1.1
+Subnet=192.168.1.1/24

@@ -1,0 +1,22 @@
+---
+- name: Activate Tailscale
+  hosts: coreos-init
+  become: true
+  tasks:
+    - name: Check Tailscale
+      ansible.builtin.command:
+        argv:
+          - tailscale
+          - status
+          - --json
+      no_log: true
+      register: tailscale_status
+      changed_when: tailscale_status.rc != 0
+
+    - name: Test Tailscale status
+      vars:
+        tailscale_status_json: "{{ tailscale_status.stdout | from_json }}"
+      ansible.builtin.debug:
+        msg: "{{ tailscale_status_json.BackendState }}"
+        # msg: "{{ tailscale_status.stdout | from_json }}.BackendState"
+      when: tailscale_status_json.BackendState == 'Running'

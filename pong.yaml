@@ -1,0 +1,123 @@
+---
+# - name: Test Backup Flow
+#   become: true
+#   hosts: pong
+#   tasks:
+#     - name: Taskfile
+#       ansible.builtin.include_tasks: tasks/init/backup.yml
+
+- name: Proxy Cockpit ws to tailscale
+  become: true
+  hosts: pong
+  vars:
+    domain: "https://{{ inventory_hostname }}.{{ secrets.tailscale_subdomain }}.ts.net"
+    upstream: "localhost:9090"
+  tasks:
+    - name: Dropin Caddyfile
+      ansible.builtin.template:
+        dest: /var/home/proxy/appdata/caddy/caddyfile.d/00-cockpit.caddyfile
+        src: templates/configs/caddyfile/caddyfile_https_ts.j2
+        owner: proxy
+        group: proxy
+        mode: '755'
+
+- name: Setup Rootless Services
+  hosts: the-red-raktuber
+  vars:
+    init: true
+    restore: false
+  tasks:
+    - name: Install Matterbridge
+      ansible.builtin.include_tasks: tasks/matterbridge.yaml
+
+    - name: Install n8n
+      ansible.builtin.include_tasks: tasks/n8n.yaml
+
+    - name: Create Projects DB User
+      when: init
+      community.postgresql.postgresql_user:
+        name: projects
+        password: "{{ shorts.secrets.PG_PASS }}"
+        login_unix_socket: /run/postgres
+        login_user: admin
+        login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+
+    - name: Install Authentik
+      vars:
+        authentik_version: 2025.6
+        email_use_tls: true
+        email_use_ssl: false
+        email_timeout: 15
+        email_port: 587
+        email_from: "{{ authentik.vars.EMAIL_FROM }}"
+      ansible.builtin.include_tasks: tasks/auth.yaml
+
+    - name: Install searx-ng
+      vars:
+        base_url: "{{ searxng.vars.BASE_URL }}"
+      ansible.builtin.include_tasks: tasks/searx-ng.yaml
+
+
+- name: Dropins
+  become: true
+  hosts: the-red-raktuber
+  vars:
+    init: true
+    restore: false
+  tasks:
+    - name: Proxy Dropin - n8n
+      become: true
+      vars:
+        base_url: "{{ n8n.vars.BASE_URL }}"
+      ansible.builtin.template:
+        src: files/configs/caddy/n8n.caddyfile
+        dest: /var/home/proxy/appdata/caddy/caddyfile.d/20-n8n.caddyfile
+        owner: proxy
+        group: proxy
+        mode: '755'
+
+    - name: Proxy Dropin - search
+      become: true
+      vars:
+        base_url: "{{ searxng.vars.BASE_URL }}"
+      ansible.builtin.template:
+        src: files/configs/caddy/search.caddyfile
+        dest: /var/home/proxy/appdata/caddy/caddyfile.d/search.caddyfile
+        owner: proxy
+        group: proxy
+        mode: '755'
+
+    - name: Proxy Dropin - auth
+      become: true
+      vars:
+        base_url: "{{ authentik.vars.BASE_URL }}"
+      ansible.builtin.template:
+        src: files/configs/caddy/auth.caddyfile
+        dest: /var/home/proxy/appdata/caddy/caddyfile.d/auth.caddyfile
+        owner: proxy
+        group: proxy
+        mode: '755'
+
+    - name: Backup Dropin - n8n
+      become: true
+      ansible.builtin.copy:
+        src: files/configs/borgmatic/borgmatic.d/n8n.yaml
+        dest: /etc/borgmatic.d/20-n8n.yaml
+        owner: root
+        group: root
+        mode: '755'
+
+    - name: Backup Dropin - auth
+      become: true
+      ansible.builtin.copy:
+        src: files/configs/borgmatic/borgmatic.d/auth.yaml
+        dest: /etc/borgmatic.d/auth.yaml
+        owner: root
+        group: root
+        mode: '755'
+
+    - name: Reload Caddy
+      ansible.builtin.systemd_service:
+        daemon_reload: false
+        name: caddy
+        state: "restarted"

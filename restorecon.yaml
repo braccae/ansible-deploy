@@ -1,0 +1,17 @@
+---
+- name: Restore SELinux
+  hosts: coreos
+  become: true
+  vars:
+    stdout_callback: default
+    selinux: true
+  tasks:
+    - name: Restorecon for Service Users
+      ansible.builtin.command:
+        argv:
+          - restorecon
+          - -R
+          - -v
+          - "/var/home/{{ item.name }}"
+      loop: "{{ service_users }}"
+      changed_when: selinux

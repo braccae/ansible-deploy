@@ -1,0 +1,24 @@
+[Unit]
+Description=
+After=network-online.target
+
+[Container]
+ContainerName=ollama
+Image=docker.io/ollama/ollama:latest
+AutoUpdate=registry
+Volume=ollama:/root/.ollama:z
+PublishPort=11434:11434
+
+Restart=unless-stopped'
+
+PodmanArgs=--cpu-shares=768 --memory=40G
+
+HealthCmd=valkey-cli ping | grep PONG
+HealthStartupInterval=20s
+HealthInterval=30s
+HealthTimeout=3s
+HealthRetries=5
+HealthStartPeriod=20s
+
+[Install]
+WantedBy=multi-user.target

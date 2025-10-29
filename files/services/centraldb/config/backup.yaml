@@ -1,0 +1,38 @@
+<<: !include /etc/borgmatic/common.yaml
+
+archive_name_format: 'postgres_core-{now}'
+
+postgresql_databases:
+    - name: postgres
+      username: admin
+      password: "{credential systemd centraldb_postgres}"
+      format: directory
+      pg_dump_command: "{root_helper} {centraldb} pg_dump"
+      pg_restore_command: "{root_helper} {centraldb} pg_restore"
+      psql_command: "{root_helper} {centraldb} psql"
+
+    - name: admin
+      username: admin
+      password: "{credential systemd centraldb_postgres}"
+      format: directory
+      pg_dump_command: "{root_helper} {centraldb} pg_dump"
+      pg_restore_command: "{root_helper} {centraldb} pg_restore"
+      psql_command: "{root_helper} {centraldb} psql"
+
+# List of one or more SQLite databases to dump before creating a
+# backup, run once per configuration file. The database dumps are
+# added to your source directories at runtime and streamed directly to
+# Borg. Requires the sqlite3 command. See https://sqlite.org/cli.html
+# for details.
+# sqlite_databases:
+    # This is used to tag the database dump file with a name.
+    # It is not the path to the database file itself. The name
+    # "all" has no special meaning for SQLite databases.
+    # - name: users
+
+      # Path to the SQLite database file to dump. If relative,
+      # it is relative to the current working directory. Note
+      # that using this database hook implicitly enables
+      # read_special (see above) to support dump and restore
+      # streaming.
+      # path: /var/lib/sqlite/users.db

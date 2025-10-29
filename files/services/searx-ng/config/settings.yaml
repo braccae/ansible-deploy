@@ -1,0 +1,92 @@
+# see https://docs.searxng.org/admin/settings/settings.html#settings-use-default-settings
+use_default_settings: true
+
+general:
+  instance_name: "Pants' Place Search"
+
+server:
+  # base_url is defined in the SEARXNG_BASE_URL environment variable, see .env and docker-compose.yml
+  secret_key: "{{ secret_key }}" # change this!
+  limiter: true # can be disabled for a private instance
+  image_proxy: true
+  method: "GET"
+
+ui:
+  static_use_hash: true
+
+redis:
+  url: redis://localhost:6379/0
+
+search:
+  favicon_resolver: "duckduckgo"
+
+  # remove format to deny access, use lower case.
+  # formats: [html, csv, json, rss]
+  formats:
+    - html
+    - json
+    - csv
+engines:
+  - name: alpine linux packages
+    engine: alpinelinux
+    disabled: false
+    shortcut: alp
+
+  - name: annas archive
+    engine: annas_archive
+    disabled: false
+    shortcut: aa
+
+  - name: apple app store
+    engine: apple_app_store
+    shortcut: aps
+    disabled: false
+
+  - name: arch linux wiki
+    engine: archlinux
+    shortcut: al
+
+  - name: deezer
+    engine: deezer
+    shortcut: dz
+    disabled: false
+
+  - name: fdroid
+    engine: fdroid
+    shortcut: fd
+    disabled: false
+
+  - name: findthatmeme
+    engine: findthatmeme
+    shortcut: ftm
+    disabled: false
+
+  - name: free software directory
+    engine: mediawiki
+    shortcut: fsd
+    categories: [it, software wikis]
+    base_url: https://directory.fsf.org/
+    search_type: title
+    timeout: 5.0
+    disabled: false
+    about:
+      website: https://directory.fsf.org/
+      wikidata_id: Q2470288
+
+  - name: imdb
+    engine: imdb
+    shortcut: imdb
+    timeout: 6.0
+    disabled: false
+
+  - name: npm
+    engine: npm
+    shortcut: npm
+    timeout: 5.0
+    disabled: false
+
+  - name: reddit
+    engine: reddit
+    shortcut: re
+    page_size: 25
+    disabled: false

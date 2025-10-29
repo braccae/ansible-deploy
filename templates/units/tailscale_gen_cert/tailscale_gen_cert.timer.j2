@@ -1,0 +1,8 @@
+[Unit]
+Description=Auto gen Tailscale Certs
+
+[Timer]
+OnCalendar={{ cert_renewal_interval }}
+Persistent=true
+
+# OnUnitInactiveSec=604800

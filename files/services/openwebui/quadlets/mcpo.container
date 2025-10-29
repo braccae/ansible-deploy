@@ -1,0 +1,19 @@
+[Unit]
+Description=mcpo mcp to openai compatible server
+After=podman-user-wait-network-online.service
+
+[Container]
+Exec=--config /config.json
+Image=ghcr.io/open-webui/mcpo:main
+AutoUpdate=registry
+# PublishPort=8000:8000
+Pod=openwebui.pod
+
+Volume=%h/appdata/openwebui/mcpo/mcp-config.json:/config.json:z,ro
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

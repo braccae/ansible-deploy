@@ -1,0 +1,8 @@
+{{ base_url }} {
+	#import cloudflare_dns
+	#import ppc_iframe
+	log
+    header Content-Security-Policy "frame-ancestors *.pants.place;"
+    header -X-Frame-Options
+	reverse_proxy localhost:5678
+}

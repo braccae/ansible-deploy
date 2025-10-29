@@ -1,0 +1,10 @@
+[Unit]
+Description=Automation Utilities
+After=network-online.target
+
+[Pod]
+ServiceName=windmill
+Volume=worker_logs:/tmp/windmill/logs:z
+
+PublishPort=8000:8000
+PublishPort=2525:2525

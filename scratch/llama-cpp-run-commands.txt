@@ -1,0 +1,23 @@
+
+# run
+
+
+# coreos
+podman run -d -p 56455:56455 --restart always --name tmp-llama.cpp -v ./appdata/llm_models:/models:z -c 512 -v /dev/dri:/dev/dri -e GGML_VK_VISIBLE_DEVICES=0 ghcr.io/ggml-org/llama.cpp:full-vulkan --server -m /models/SmolLM3-3B-128K-UD-Q5_K_XL.gguf -ngl 99 --host 0.0.0.0 --port 56455
+
+# truenas
+docker run -p 56455:56455 --restart always --name tmp-llama.cpp -v /mnt/SSD/Appdata/llm_models:/models:z -c 512 --device=/dev/dri:/dev/dri -e GGML_VK_VISIBLE_DEVICES=0 ghcr.io/ggml-org/llama.cpp:full-vulkan --server -m /models/SmolLM3-3B-128K-UD-Q8_K_XL.gguf -ngl 99 --host 0.0.0.0 --port 56455
+
+
+# testing
+
+
+podman run -v llm-models:/models:z -c 512 -v /dev/dri:/dev/dri -e GGML_VK_VISIBLE_DEVICES=0,1,2.3 ghcr.io/ggml-org/llama.cpp:full-vulkan --server --list-devices
+
+docker run -v llm-models:/models:z -c 512 --device=/dev/dri:/dev/dri -e GGML_VK_VISIBLE_DEVICES=0,1 ghcr.io/ggml-org/llama.cpp:full-vulkan --server --list-devices
+
+podman run --rm -p 6578:8000 -v /home/andrew/.local/share/llm_models:/models:z -c 512 -v /dev/dri:/dev/dri -e GGML_VK_VISIBLE_DEVICES=0 ghcr.io/ggml-org/llama.cpp:full-vulkan 
+
+docker run --rm -v /mnt/SSD/Appdata/llm_models:/models:z -c 512 --device=/dev/dri:/dev/dri -e GGML_VK_VISIBLE_DEVICES=0 ghcr.io/ggml-org/llama.cpp:full-vulkan --bench --model /models/SmolLM3-3B-128K-UD-Q8_K_XL.gguf --n-gpu-layers 99 --main-gpu 0
+
+podman run --rm -v ./appdata/llm_models:/models:z -c 512 -v /dev/dri:/dev/dri -e GGML_VK_VISIBLE_DEVICES=0 ghcr.io/ggml-org/llama.cpp:full-vulkan --bench --model /models/SmolLM3-3B-128K-UD-Q8_K_XL.gguf --n-gpu-layers 99 --main-gpu 0

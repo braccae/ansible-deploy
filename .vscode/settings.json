@@ -1,0 +1,14 @@
+{
+    "ansible.python.interpreterPath": "/home/andrew/.dev/deployments/ansible-deploy/.venv/bin/python",
+    "devdocs-adapter.docsets": [
+        "ansible",
+        "astro",
+        "async",
+        "bash",
+        "html",
+        "javascript"
+    ],
+    "yaml.schemas": {
+        "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/playbook": "file:///var/home/andrew/.dev/deployments/ansible-deploy/ping.yaml"
+    }
+}

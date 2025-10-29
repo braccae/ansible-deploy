@@ -1,0 +1,108 @@
+---
+- name: Ensure Quadlet subdir
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/vaultwarden"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Template Vaultwarden Quadlet
+  become: true
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/vaultwarden/vaultwarden.container"
+    src: ../quadlets/vaultwarden.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '644'
+
+- name: Copy tsnsrv Quadlet
+  become: true
+  ansible.builtin.copy:
+    src: ../quadlets/vw-tsnsrv.container
+    dest: "/var/home/{{ user }}/.config/containers/systemd/vaultwarden/vw-tsnsrv.container"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '644'
+
+- name: Copy Vaultwarden Pod Quadlet
+  become: true
+  ansible.builtin.copy:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/vaultwarden/vaultwarden.pod"
+    src: ../quadlets/vaultwarden.pod
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '644'
+
+- name: Ensure Appdir
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/vaultwarden"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Ensure Secret - ts proxykey
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: ts_proxykey
+    data: "{{ ts_proxykey }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - DB URL
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: vaultwarden_db
+    data: "postgresql://vaultwarden:{{ vaultwarden_db_pass }}@127.0.0.1:5432/app_vaultwarden"
+    state: present
+    skip_existing: false
+
+- name: Create User
+  when: init
+  community.postgresql.postgresql_user:
+    name: vaultwarden
+    password: "{{ vaultwarden_db_pass }}"
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ db_admin_pass }}"
+
+- name: Create database
+  when: init
+  community.postgresql.postgresql_db:
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ db_admin_pass }}"
+    name: app_vaultwarden
+    owner: vaultwarden
+    state: present
+
+- name: Start vaultwarden
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: vaultwarden
+    state: "started"
+
+- name: Backup Dropin - vaultwarden
+  become: true
+  ansible.builtin.template:
+    src: ../config/backup.yaml
+    dest: /etc/borgmatic.d/21-vaultwarden.yaml
+    owner: root
+    group: root
+    mode: '644'
+
+# - name: Reload Caddy
+#   become: true
+#   ansible.builtin.systemd_service:
+#     daemon_reload: false
+#     name: caddy
+#     state: "restarted"

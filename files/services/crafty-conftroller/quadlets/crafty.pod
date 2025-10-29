@@ -1,0 +1,25 @@
+[Unit]
+Description=Crafty Minecraft Server Manger
+After=podman-user-wait-network-online.service
+
+[Pod]
+PodName=crafty.pod
+
+Network=pasta:-T,5432:5432
+
+PublishPort=8443:8443
+PublishPort=8123:8123
+PublishPort=19132:19132/udp
+PublishPort=25500-25600:25500-25600
+HostName=mc
+
+Volume=%h/appdata/minecraft/crafty/hdd/backups:/crafty/backups:z
+Volume=%h/appdata/minecraft/crafty/hdd/logs:/crafty/logs:z
+Volume=%h/appdata/minecraft/crafty/servers:/crafty/servers:z
+Volume=%h/appdata/minecraft/crafty/config:/crafty/app/config:z
+Volume=%h/appdata/minecraft/crafty/hdd/import:/crafty/import:z
+
+Volume=crafty-ts:/var/lib/tailscale:Z
+
+[Install]
+WantedBy=default.target

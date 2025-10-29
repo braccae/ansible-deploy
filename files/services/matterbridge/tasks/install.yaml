@@ -1,0 +1,38 @@
+---
+
+- name: Add Quadlets
+  become: true
+  ansible.builtin.copy:
+    src: files/services/matterbridge/quadlets/matterbridge.container
+    dest: "/var/home/{{ user }}/.config/containers/systemd/matterbridge.container"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Config Directory
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/matterbridge/"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+# - name: Add config
+#   become: true
+#   ansible.builtin.copy:
+#     src: files/configs/matterbridge.toml
+#     dest: "/var/home/{{ user }}/appdata/matterbridge/matterbridge.toml"
+#     owner: "{{ user }}"
+#     group: "{{ user }}"
+#     mode: '755'
+
+- name: Start Matterbridge
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: matterbridge
+    state: "started"

@@ -1,0 +1,98 @@
+---
+# - name: Check Tailscale
+#   ansible.builtin.command:
+#     argv:
+#       - tailscale
+#       - status
+#       - --json
+#   no_log: true
+#   register: tailscale_status
+#   changed_when: tailscale_status.rc == 0
+
+- name: Ensure Tailscaled
+  ansible.builtin.systemd_service:
+    name: tailscaled.service
+    enabled: true
+    state: "started"
+
+- name: Allow Proxy User to create Certs
+  ansible.builtin.lineinfile:
+    path: /etc/default/tailscaled
+    line: "TS_PERMIT_CERT_UID=2600"
+    state: present
+    create: true
+    group: root
+    mode: '644'
+
+- name: Tailscale up
+  # when: (tailscale_status.stdout | from_json).BackendState == "NeedsLogin"
+  ansible.builtin.command:
+    argv:
+      - tailscale
+      - up
+      - --reset
+      - --accept-dns
+      - --ssh
+      - --auth-key={{ secrets.tailscale_authkey }}
+      - --hostname={{ inventory_hostname }}
+  register: tailscale_up
+  changed_when: tailscale_up.rc == 0
+
+- name: Ensure Tailscale ssl directory
+  ansible.builtin.file:
+    path: /etc/ssl/certs/tailscale/
+    state: directory
+    owner: root
+    group: proxy
+    mode: '755'
+
+- name: Template Cert Gen Service
+  become: true
+  ansible.builtin.template:
+    dest: /etc/systemd/system/tailscale_gen_cert.service
+    src: templates/units/tailscale_gen_cert/tailscale_gen_cert.service.j2
+    owner: root
+    group: root
+    mode: '600'
+    force: true
+
+- name: Template Cert Gen Timer
+  become: true
+  ansible.builtin.template:
+    dest: /etc/systemd/system/tailscale_gen_cert.timer
+    src: templates/units/tailscale_gen_cert/tailscale_gen_cert.timer.j2
+    owner: root
+    group: root
+    mode: '600'
+    force: true
+
+- name: Generate Certs
+  ansible.builtin.systemd_service:
+    name: tailscale_gen_cert.service
+    daemon_reload: true
+    state: "started"
+
+- name: Activate Cert Renewal Timer
+  ansible.builtin.systemd_service:
+    name: tailscale_gen_cert.timer
+    enabled: true
+    state: "started"
+
+- name: Add tailscale0 to trusted firewall zone
+  ansible.posix.firewalld:
+    interface: tailscale0
+    state: enabled
+    zone: trusted
+    immediate: true
+    permanent: true
+
+# - name: Generate SSL Certs
+#   ansible.builtin.command:
+#     chdir: /etc/ssl/certs/tailscale
+#     argv:
+#       - tailscale
+#       - cert
+#       - "{{ inventory_hostname + '.' + secrets.tailscale_subdomain + '.ts.net' }}"
+#     creates:
+#       - /etc/ssl/certs/{{ inventory_hostname + '.' + secrets.tailscale_subdomain + '.ts.net' + '.crt' }}
+#       - /etc/ssl/certs/{{ inventory_hostname + '.' + secrets.tailscale_subdomain + '.ts.net' + '.key' }}

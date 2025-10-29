@@ -1,0 +1,6 @@
+ai:
+  ports:
+    443/https:
+      targets:
+        - http://127.0.0.1:3789
+      tlsValidate: false

@@ -1,0 +1,11 @@
+{{ base_url }} {
+	#import cloudflare_dns
+	log
+    header Content-Security-Policy "frame-ancestors *.pants.place;"
+    header -X-Frame-Options
+	reverse_proxy https://localhost:9443 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}

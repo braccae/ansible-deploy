@@ -1,0 +1,15 @@
+[Unit]
+Description=Apache Tika server for OpenwebUI
+After=podman-user-wait-network-online.service
+
+[Container]
+Image=docker.io/apache/tika:latest-full
+AutoUpdate=registry
+Pod=openwebui.pod
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

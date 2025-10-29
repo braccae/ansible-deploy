@@ -1,0 +1,34 @@
+<<: !include /etc/borgmatic/common.yaml
+
+constants:
+  unifidb: podman exec -i --user root systemd-unifi-db
+
+archive_name_format: 'unifi-{now}'
+
+source_directories:
+    - /var/home/core/appdata/unifi/backups
+
+mongodb_databases:
+    - name: unifi
+      username: root
+      password: "{credential systemd centraldb_mongo}"
+      authentication_database: admin
+      format: directory
+      mongodump_command: "{root_helper} {unifidb} mongodump"
+      mongorestore_command: "{root_helper} {unifidb} mongorestore"
+
+    - name: unifi_stat
+      username: root
+      password: "{credential systemd centraldb_mongo}"
+      authentication_database: admin
+      format: directory
+      mongodump_command: "{root_helper} {unifidb} mongodump"
+      mongorestore_command: "{root_helper} {unifidb} mongorestore"
+
+    - name: unifi_audit
+      username: root
+      password: "{credential systemd centraldb_mongo}"
+      authentication_database: admin
+      format: directory
+      mongodump_command: "{root_helper} {unifidb} mongodump"
+      mongorestore_command: "{root_helper} {unifidb} mongorestore"

@@ -1,0 +1,27 @@
+[Unit]
+Description=Backrest Restic Backups
+After=multi-user.target
+Restart=always
+
+[Container]
+Image=docker.io/garethgeorge/backrest:latest
+AutoUpdate=registry
+PodmanArgs=--privleged
+
+PublishPort=9898:localhost:9898
+
+Volume=backrest-data:/data
+Volume=backrest-config:/config
+Volume=backrest-cache:/cache
+Volume=backrest-tmp:/tmp
+Volume=/:/userdata  # Mount local paths to backup
+# Volume=/path/to/local/repos:/repos     # Mount local repos (optional for remote storage)
+
+Environment=BACKREST_DATA=/data
+Environment=BACKREST_CONFIG=/config/config.json
+Environment=XDG_CACHE_HOME=/cache
+Environment=TMPDIR=/tmp
+Environment=TZ=America/New_York
+
+[Install]
+WantedBy=multi-user.target

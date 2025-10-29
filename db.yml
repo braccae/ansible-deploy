@@ -1,0 +1,6 @@
+- name: Setup Central DB
+  hosts: coreos-init
+  become: true
+  tasks:
+    - name: Ensure postgres socket directory
+      ansible.builtin.include_tasks: tasks/init-centraldb.yml

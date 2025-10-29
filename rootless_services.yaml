@@ -1,0 +1,166 @@
+---
+- name: Setup Rootless Services
+  hosts: coreos
+  become: true
+  vars:
+    init: true
+    restore: false
+
+  tasks:
+    - name: Install n8n
+      when: ansible_hostname in ['the-red-raktuber', 'pong']
+      vars:
+        user: apps
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+        base_url: "{{ n8n.vars.BASE_URL }}"
+        webhook_url: "{{ n8n.vars.BASE_URL }}"
+        encryption_key: "{{ n8n.secrets.N8N_ENCRYPTION_KEY }}"
+        db_pass: "{{ n8n.secrets.DB_PASS }}"
+        db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+        runner_auth_token: "{{ n8n.secrets.RUNNER_AUTH_TOKEN }}"
+      ansible.builtin.include_tasks: files/services/n8n/tasks/install.yaml
+
+    - name: Install Matterbridge
+      when: ansible_hostname in ['the-red-raktuber']
+      vars:
+        user: apps
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+      ansible.builtin.include_tasks: files/services/matterbridge/tasks/install.yaml
+
+    - name: Install openwebui
+      when: ansible_hostname in ['pong']
+      vars:
+        user: apps
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+        base_url: "{{ openwebui.vars.BASE_URL }}"
+        embedding_model: "{{ openwebui.vars.EMBEDDING_MODEL }}"
+        secret_key: "{{ openwebui.secrets.SECRET_KEY }}"
+        db_pass: "{{ openwebui.secrets.DB_PASS }}"
+        db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+      ansible.builtin.include_tasks: files/services/openwebui/tasks/install.yaml
+
+    - name: Shorts Bot Setup
+      when: ansible_hostname == 'the-red-raktuber'
+      block:
+        - name: Ensure Shorts DB User
+          community.postgresql.postgresql_user:
+            name: shorts
+            password: "{{ shorts.secrets.PG_PASS }}"
+            login_unix_socket: /run/postgres
+            login_user: admin
+            login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+        - name: Ensure Shorts Bot database
+          community.postgresql.postgresql_db:
+            login_unix_socket: /run/postgres
+            # login_host:
+            login_user: admin
+            login_password: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+            name: shorts
+            owner: shorts
+            state: present
+
+    - name: Install Authentik
+      when: ansible_hostname in ['the-red-raktuber', 'pong']
+      vars:
+        user: auth
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+        authentik_version: 2025.10
+        email_use_tls: true
+        email_use_ssl: false
+        email_timeout: 15
+        email_port: 587
+        email_from: "{{ authentik.vars.EMAIL_FROM }}"
+      ansible.builtin.include_tasks: files/services/auth/tasks/install.yaml
+
+    - name: Install searx-ng
+      when: ansible_hostname == 'the-red-raktuber'
+      vars:
+        user: apps
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+        base_url: "{{ searxng.vars.BASE_URL }}"
+        secret_key: "{{ searxng.secrets.SECRET_KEY }}"
+      ansible.builtin.include_tasks: files/services/searx-ng/tasks/install.yaml
+
+    - name: Install Vaultwarden
+      when: ansible_hostname in ['pong']
+      vars:
+        user: auth
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+        vaultwarden_db_pass: "{{ vaultwarden.secrets.DB_PASS }}"
+        db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+        ts_proxykey: "{{ secrets.tailscale_proxykey }}"
+      ansible.builtin.include_tasks: files/services/vaultwarden/tasks/install.yaml
+
+    - name: Install IT Tools
+      when: ansible_hostname in ['pong']
+      vars:
+        user: apps
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+        ts_proxykey: "{{ secrets.tailscale_proxykey }}"
+      ansible.builtin.include_tasks: files/services/it-tools/tasks/install.yaml
+
+- name: Dropins
+  become: true
+  hosts: coreos
+  vars:
+    init: true
+    restore: false
+  tasks:
+    - name: Proxy Dropin - PPC
+      when: ansible_hostname in ['the-red-raktuber', 'the-freezer', 'likes-it-cold']
+      become: true
+      vars:
+        upstream: "{{ pants_place_cloud_upstream }}"
+        domain: "https://cloud.pants.place"
+      ansible.builtin.template:
+        src: templates/caddyfile/caddyfile_http.j2
+        dest: /var/home/proxy/appdata/caddy/caddyfile.d/pants-place-cloud.caddyfile
+        owner: proxy
+        group: proxy
+        mode: "755"
+
+    - name: Proxy Dropin - jellyfin
+      when: ansible_hostname in ['the-red-raktuber', 'likes-it-cold']
+      become: true
+      vars:
+        upstream: "{{ jellyfin_upstream }}"
+        domain: "https://jellyfin.pants.place"
+      ansible.builtin.template:
+        src: templates/caddyfile/caddyfile_http.j2
+        dest: /var/home/proxy/appdata/caddy/caddyfile.d/jellyfin.caddyfile
+        owner: proxy
+        group: proxy
+        mode: "755"
+
+    - name: Proxy Cockpit ws to tailscale
+      # when: ansible_hostname in ['pong', 'the-freezer']
+      become: true
+      vars:
+        domain: "https://{{ inventory_hostname }}.{{ secrets.tailscale_subdomain }}.ts.net"
+        upstream: "localhost:9090"
+      ansible.builtin.template:
+        dest: /var/home/proxy/appdata/caddy/caddyfile.d/00-cockpit.caddyfile
+        src: templates/caddyfile/caddyfile_https_ts.j2
+        owner: proxy
+        group: proxy
+        mode: "755"
+
+    - name: Reload Caddy
+      ansible.builtin.systemd_service:
+        daemon_reload: false
+        name: caddy
+        state: "restarted"

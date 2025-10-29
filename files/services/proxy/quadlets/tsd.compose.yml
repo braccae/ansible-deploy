@@ -1,0 +1,20 @@
+services:
+  tsdproxy:
+    image: docker.io/almeidapaulopt/tsdproxy:2
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      # needed to fix https://github.com/almeidapaulopt/tsdproxy/issues/33#issuecomment-2471796745
+      STATE_DIRECTORY: /data
+
+    volumes:
+      # kevinh: use the user podman socket 
+      - /run/user/1001/podman/podman.sock:/from_host/docker.sock:Z
+      - datadir:/data:Z
+      - ./config:/config:Z
+
+volumes:
+  datadir:

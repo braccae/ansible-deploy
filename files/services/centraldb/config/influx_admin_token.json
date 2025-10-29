@@ -1,0 +1,5 @@
+{
+  "token": "apiv3_{{ influx_admin }}",
+  "name": "_admin",
+  "expiry_millis": 1756400061529
+}

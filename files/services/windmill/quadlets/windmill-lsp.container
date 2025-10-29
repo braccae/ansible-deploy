@@ -1,0 +1,12 @@
+[Unit]
+Description=Windmill LSP Server
+After=network-online.target
+After=windmill-server.service
+
+[Container]
+Image=ghcr.io/windmill-labs/windmill-lsp:latest
+AutoUpdate=registry
+Pod=windmill.pod
+
+Volume=windmill-lsp-cache:/pyls/.cache:Z
+#PublishPort=3001:3001

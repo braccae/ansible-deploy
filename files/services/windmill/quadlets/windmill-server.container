@@ -1,0 +1,12 @@
+[Unit]
+Description=Windmill
+After=postgres.service
+
+[Container]
+Image=ghcr.io/windmill-labs/windmill-lsp:latest
+AutoUpdate=registry
+Pod=windmill.pod
+
+Secret=windmill_db_uri,type=env,target=DATABASE_URL
+# Environment=DATABASE_URL=postgres://postgres:changeme@db/windmill?sslmode=disable
+Environment=MODE=server

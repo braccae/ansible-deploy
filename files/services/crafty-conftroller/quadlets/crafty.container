@@ -1,0 +1,13 @@
+[Unit]
+Description=crafty controller main
+Requires=podman-user-wait-network-online.service
+
+[Container]
+Environment=TZ=America/New_York
+
+Image=registry.gitlab.com/crafty-controller/crafty-4:latest
+AutoUpdate=registry
+Pod=crafty.pod
+
+[Service]
+Restart=always

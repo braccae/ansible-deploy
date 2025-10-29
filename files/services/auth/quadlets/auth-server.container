@@ -1,0 +1,42 @@
+[Unit]
+Description=Authentik Server Proccess
+After=auth-valkey.service
+
+[Service]
+Restart=always
+
+[Container]
+ContainerName=
+Image=ghcr.io/goauthentik/server:{{ authentik_version }}
+AutoUpdate=registry
+Exec=server
+Pod=auth.pod
+
+User={{ uid }}:{{ gid }}
+# UserNS=keep-id
+# ExposeHostPort=5432:5432
+
+Environment=AUTHENTIK_REDIS__HOST=localhost
+Environment=AUTHENTIK_POSTGRESQL__HOST=localhost
+Environment=AUTHENTIK_POSTGRESQL__USER=authentik
+Environment=AUTHENTIK_POSTGRESQL__NAME=authentik
+Secret=authentik_db_pass,type=env,target=AUTHENTIK_POSTGRESQL__PASSWORD
+Secret=authentik_secret_key,type=env,target=AUTHENTIK_SECRET_KEY
+
+Environment=AUTHENTIK_EMAIL__USE_TLS={{ email_use_tls | default(true) }}
+Environment=AUTHENTIK_EMAIL__USE_SSL={{ email_use_ssl | default(false) }}
+Environment=AUTHENTIK_EMAIL__TIMEOUT={{ email_timeout }}
+Environment=AUTHENTIK_EMAIL__PORT={{ email_port }}
+Environment=AUTHENTIK_EMAIL__FROM={{ email_from }}
+Secret=authentik_email_host,type=env,target=AUTHENTIK_EMAIL__HOST
+Secret=authentik_email_username,type=env,target=AUTHENTIK_EMAIL__USERNAME
+Secret=authentik_email_password,type=env,target=AUTHENTIK_EMAIL__PASSWORD
+
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

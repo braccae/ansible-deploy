@@ -1,0 +1,10 @@
+[Container]
+ContainerName=it-tools
+Image=ghcr.io/corentinth/it-tools:latest
+Pod=it-tools.pod
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

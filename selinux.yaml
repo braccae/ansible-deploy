@@ -1,0 +1,14 @@
+---
+- name: Setup Rootless Services
+  hosts: coreos
+  become: true
+  vars:
+    init: true
+    restore: false
+
+  tasks:
+
+    - name: Ensure SELinux is enabled
+      ansible.posix.selinux:
+        policy: targeted
+        state: permissive

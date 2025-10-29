@@ -1,0 +1,18 @@
+[Unit]
+Description=MatterBridge Service
+After=podman-user-wait-network-online.service
+Restart=always
+
+[Container]
+ContainerName=matterbridge
+
+Image=docker.io/42wim/matterbridge:stable
+
+Volume=%h/appdata/matterbridge/matterbridge.toml:/etc/matterbridge/matterbridge.toml:ro,z
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

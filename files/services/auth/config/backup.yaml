@@ -1,0 +1,30 @@
+<<: !include /etc/borgmatic/common.yaml
+
+archive_name_format: 'auth-{now}'
+
+source_directories:
+    - /var/home/{{ user }}/appdata/auth/media
+    - /var/home/{{ user }}/appdata/auth/certs
+    - /var/home/{{ user }}/appdata/auth/templates
+
+postgresql_databases:
+    - name: authentik
+      username: admin
+      password: "{credential systemd centraldb_postgres}"
+      format: directory
+      pg_dump_command: "{root_helper} {centraldb} pg_dump"
+      pg_restore_command: "{root_helper} {centraldb} pg_restore"
+      psql_command: "{root_helper} {centraldb} psql"
+
+commands:
+    - before: configuration
+      when:
+        - create
+      run:
+        - "{auth_helper} systemctl --user stop auth-pod"
+
+    - after: configuration
+      when:
+        - create
+      run:
+        - "{auth_helper} systemctl --user start auth-pod"

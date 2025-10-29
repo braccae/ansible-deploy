@@ -1,0 +1,21 @@
+
+[Unit]
+Description=n8n Workflow Engine
+Requires=podman-user-wait-network-online.service
+
+[Container]
+AutoUpdate=registry
+Image=docker.io/n8nio/runners
+Pod=n8n.pod
+; User={{ uid }}:{{ gid }}
+; UserNS=keep-id:uid={{ uid }},gid={{ gid }}
+
+Environment=N8N_RUNNERS_TASK_BROKER_URI=http://127.0.0.1:5679
+Secret=n8n-runner-auth-token,type=env,target=N8N_RUNNERS_AUTH_TOKEN
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

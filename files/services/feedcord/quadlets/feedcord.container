@@ -1,0 +1,12 @@
+[Unit]
+Description=Feedcord
+
+[Container]
+
+Image=docker.io/qolors/feedcord:latest
+AutoUpdate=registry
+
+Volume=%h/.config/feedcord.json:/app/config/appsettings.json:z
+
+[Install]
+WantedBy=multi-user.target

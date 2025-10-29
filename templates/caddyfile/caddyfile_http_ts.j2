@@ -1,0 +1,5 @@
+"{{ domain }}" {
+	log
+    tls /data/tailscale/public.crt /data/tailscale/private.key
+	reverse_proxy "{{ upstream }}"
+}

@@ -1,0 +1,56 @@
+[Unit]
+Description=Pants' Place Search
+After=podman-user-wait-network-online.service
+
+[Container]
+ContainerName=searx-ng
+AutoUpdate=registry
+Image=docker.io/searxng/searxng:latest
+Pod=search.pod
+
+User={{ uid }}:{{ gid }}
+
+#PublishPort=8182:8080
+Volume=%h/appdata/search/searx-ng:/etc/searxng:z
+
+Environment=SEARXNG_BASE_URL={{ base_url }}
+Environment=UWSGI_WORKERS=4
+Environment=UWSGI_THREADS=4
+
+# Optional: Specify the network to connect to.
+# Defaults to bridge. Can be a network name or ID.
+# Network=<network-name>
+
+LogDriver=k8s-file
+LogOpt=max-size=1m
+
+# Optional: Set resource limits (CPU, memory).
+# Example: Memory=512M
+# Example: CPUShares=512
+# See podman run documentation for more options.
+# Memory=<limit>
+# CPUShares=<value>
+
+# Optional: Specify the user to run the container as.
+# Format: <user>[:<group>] (can be name or UID/GID)
+# User=<user>
+
+# Optional: Set the working directory inside the container.
+# WorkingDirectory=<path>
+
+# Optional: Add healthcheck configuration
+# See Podman documentation for details on healthcheck options.
+# HealthcheckCmd=<command>
+# HealthcheckInterval=<duration>
+# HealthcheckTimeout=<duration>
+# HealthcheckRetries=<number>
+# HealthcheckStartPeriod=<duration>
+
+[Service]
+Restart=always
+
+[Install]
+# This section defines how the service is enabled to start at boot.
+# multi-user.target is the standard target for services that should run
+# when the system is fully booted for multi-user operation.
+WantedBy=default.target

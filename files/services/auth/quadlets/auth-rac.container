@@ -1,0 +1,7 @@
+[Container]
+Environment=AUTHENTIK_HOST=https://authentik.company 
+Environment=AUTHENTIK_INSECURE=false 
+Environment=AUTHENTIK_TOKEN=token-generated-by-authentik
+Image=ghcr.io/goauthentik/rac
+AutoUpdate=registry
+Pod=auth.pod

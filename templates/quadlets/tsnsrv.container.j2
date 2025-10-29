@@ -1,0 +1,17 @@
+[Unit]
+Description=tailscale connection for {{ service_name }}
+Requires=podman-user-wait-network-online.service
+
+[Container]
+Image=ghcr.io/boinkor-net/tsnsrv:latest
+AutoUpdate=registry
+Exec=-name {{ service_name }} -stateDir /ts -authkeyPath /run/secrets/ts_proxykey -tsnetVerbose=false -tag tag:app http://127.0.0.1:{{ internal_port }}
+Secret=ts_proxykey
+Pod={{ service_name }}.pod
+Volume=ts-{{ service_name }}:/ts:Z
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

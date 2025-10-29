@@ -1,0 +1,33 @@
+[Unit]
+Description=Authentik Valkey Instance
+After=auth-pod.service
+
+[Container]
+ContainerName=
+Image=docker.io/valkey/valkey:8-alpine
+AutoUpdate=registry
+Exec=valkey-server --save 30 1 --loglevel warning
+Pod=auth.pod
+# Notify=true
+# Volume=%h/appdata/auth/valkey:/data:z
+
+# Volume=auth_valkey:/data:z
+
+User={{ uid }}:{{ gid }}
+
+PodmanArgs=--memory=512M
+HealthCmd=valkey-cli ping | grep PONG
+HealthStartupInterval=20s
+HealthInterval=30s
+HealthTimeout=3s
+HealthRetries=5
+HealthStartPeriod=20s
+
+NoNewPrivileges=true
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

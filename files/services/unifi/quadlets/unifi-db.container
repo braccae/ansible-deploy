@@ -1,0 +1,23 @@
+[Unit]
+Description=Unifi Network Application MongoDB
+After=network-online.target
+
+[Container]
+Image=docker.io/mongo:8
+AutoUpdate=registry
+
+Pod=unifi.pod
+User=2200:2200
+
+Volume=/var/home/apps/appdata/unifi/db:/data/db
+Volume=/run/backup:/run/backup:z,rshared
+# Secret=unifi_db_init,type=mount,target=/docker-entrypoint-initdb.d/init-mongo.sh
+
+Environment=MONGO_INITDB_ROOT_USERNAME=root MONGO_USER=unifi
+Environment=MONGO_DBNAME=unifi MONGO_AUTHSOURCE=admin
+
+Secret=unifi_db,type=env,target=MONGO_PASS
+Secret=unifi_db_root,type=env,target=MONGO_INITDB_ROOT_PASSWORD
+
+[Service]
+Restart=always

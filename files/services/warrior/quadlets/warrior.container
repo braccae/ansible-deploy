@@ -1,0 +1,23 @@
+[Unit]
+Description=Archive Team Warrior
+After=podman-user-wait-network-online.service
+
+[Container]
+
+Image=atdr.meo.ws/archiveteam/warrior-dockerfile
+AutoUpdate=registry
+
+PublishPort=8001:8001
+
+Environment=DOWNLOADER=pants_the_person
+Environment=HTTP_USERNAME=
+Environment=HTTP_PASSWORD=
+Environment=SELECTED_PROJECT=auto
+Environment=CONCURRENT_ITEMS=6
+Environment=SHARED_RSYNC_THREADS=20
+Environment=WARRIOR_ID=
+
+Volume=%h/appdata/warrior:/home/warrior/projects:z
+
+[Install]
+WantedBy=default.target

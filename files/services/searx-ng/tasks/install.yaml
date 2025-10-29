@@ -1,0 +1,83 @@
+---
+- name: Ensure Quadlet directory
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/search"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Add Quadlet - Pod
+  become: true
+  ansible.builtin.template:
+    src: ../quadlets/search.pod
+    dest: "/var/home/{{ user }}/.config/containers/systemd/search/search.pod"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Add Quadlet - Valkey
+  become: true
+  ansible.builtin.template:
+    src: ../quadlets/searx-ng-valkey.container
+    dest: "/var/home/{{ user }}/.config/containers/systemd/search/searx-ng-valkey.container"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Template Quadlet - Searx-ng
+  become: true
+  ansible.builtin.template:
+    src: ../quadlets/searx-ng.container
+    dest: "/var/home/{{ user }}/.config/containers/systemd/search/searx-ng.container"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Config Directory
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/search/searx-ng/"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Valkey Directory
+  become: true
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/search/valkey"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Add config
+  become: true
+  ansible.builtin.template:
+    src: ../config/settings.yaml
+    dest: "/var/home/{{ user }}/appdata/search/searx-ng/settings.yaml"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Start Search
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: search-pod
+    state: "started"
+
+- name: Proxy Dropin - search
+  become: true
+  ansible.builtin.template:
+    src: ../config/search.caddyfile
+    dest: /var/home/proxy/appdata/caddy/caddyfile.d/search.caddyfile
+    owner: proxy
+    group: proxy
+    mode: "755"

@@ -1,0 +1,28 @@
+<<: !include /etc/borgmatic/common.yaml
+
+archive_name_format: 'n8n-{now}'
+
+source_directories:
+    - /var/home/{{ user }}/appdata/n8n/data
+
+postgresql_databases:
+    - name: app_n8n
+      username: admin
+      password: "{credential systemd centraldb_postgres}"
+      format: directory
+      pg_dump_command: "{root_helper} {centraldb} pg_dump"
+      pg_restore_command: "{root_helper} {centraldb} pg_restore"
+      psql_command: "{root_helper} {centraldb} psql"
+
+commands:
+    - before: configuration
+      when:
+        - create
+      run:
+        - "{apps_helper} systemctl --user stop n8n"
+
+    - after: configuration
+      when:
+        - create
+      run:
+        - "{apps_helper} systemctl --user start n8n"

@@ -1,0 +1,60 @@
+[Unit]
+Description=Caddy
+After=crowdsec.service
+
+[Container]
+Image=ghcr.io/braccae/caddy:latest
+AutoUpdate=registry
+User=2600:2600
+# UIDMap=1000:2600:1
+LogDriver=journald
+
+# PublishPort=80:80
+# PublishPort=443:443
+
+Network=host
+Volume=/var/home/proxy/appdata/caddy/config:/config:z
+Volume=/var/home/proxy/appdata/caddy/data:/data:z
+Volume=/var/home/proxy/appdata/caddy/caddyfile.d/:/caddyfile.d:z
+Volume=/etc/ssl/certs/tailscale:/data/tailscale:z
+# Volume=/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock:z
+
+Secret=admin_email,type=env,target=EMAIL
+Secret=caddy_cf_api_token,type=env,target=CF_API_TOKEN
+
+# crowdsec security engine
+# ExposeHostPort=8080
+# ExposeHostPort=6060
+# Environment='CROWDSEC_API_URL=http://localhost:8080'
+# Secret=crowdsec_api_key,type=env,target=CROWDSEC_API_KEY
+# Environment='CROWDSEC_TICKER_INTERVAL=15s'
+# Environment='CROWDSEC_APPSEC_URL=http://localhost:6060'
+# Environment='CROWDSEC_ENABLE_HARD_FAILS=False'
+
+
+# dev | staging | prod
+Environment=MODE=dev
+# # Prod
+# Environment=VAULT_ADDR=
+# Secret=vault_token[,type=file,target=/var/run/secrets/kubernetes.io/vault_token]
+# # Staging
+# Environment=S3_HOST=
+# Environment=S3_BUCKET=
+# Environment=S3_PREFIX=
+# Secret=s3_access_key[,type=env,target=S3_ACCESS_KEY]
+# Secret=s3_secret_key[,type=env,target=S3_SECRET_KEY]
+# # Staging Optional
+# Secret=s3_encryption_key[,type=env,target=S3_ENCRYPTION_KEY]
+
+HealthCmd=curl -f -s -o /dev/null http://localhost/healthz
+HealthInterval=10s
+HealthTimeout=20s
+HealthRetries=3
+HealthStartPeriod=60s
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=multi-user.target

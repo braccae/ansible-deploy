@@ -1,0 +1,89 @@
+constants:
+    root_helper: /usr/bin/systemd-run --wait --pipe --collect --unit="borgmatic-helper"
+    core_helper: /usr/bin/systemd-run --user --machine=core@ --wait --pipe --collect --unit="borgmatic-core-helper"
+    ansible_helper: /usr/bin/systemd-run --user --machine=ansible@ --wait --pipe --collect --unit="borgmatic-ansible-helper"
+    apps_helper: /usr/bin/systemd-run --user --machine=apps@ --wait --pipe --collect --unit="borgmatic-apps-helper"
+    auth_helper: /usr/bin/systemd-run --user --machine=auth@ --wait --pipe --collect --unit="borgmatic-auth-helper"
+    backup_helper: /usr/bin/systemd-run --user --machine=backup@ --wait --pipe --collect --unit="borgmatic-backup-helper"
+    db_helper: /usr/bin/systemd-run --user --machine=db@ --wait --pipe --collect --unit="borgmatic-db-helper"
+    proxy_helper: /usr/bin/systemd-run --user --machine=proxy@ --wait --pipe --collect --unit="borgmatic-proxy-helper"
+    media_helper: /usr/bin/systemd-run --user --machine=media@ --wait --pipe --collect --unit="borgmatic-media-helper"
+    virt_helper: /usr/bin/systemd-run --user --machine=virt@ --wait --pipe --collect --unit="borgmatic-virt-helper"
+    centraldb: podman exec -i --user root systemd-postgres
+
+repositories:
+    # The local path or Borg URL of the repository.
+    - path: '{{ repo_uri }}'
+
+# exclude_caches: true
+
+exclude_if_present:
+    - .nobackup
+
+encryption_passphrase: "{credential systemd borgmatic.pw}"
+
+relocated_repo_access_is_ok: true
+
+compression: zstd,20
+recompress: never
+upload_rate_limit: 10000
+upload_buffer_size: 90
+retries: 0
+retry_wait: 10
+
+user_runtime_directory: /run/backup
+ssh_command: ssh -i /root/.ssh/borg
+
+lock_wait: 5
+
+keep_daily: 7
+keep_weekly: 4
+keep_monthly: 6
+keep_yearly: 1
+
+check_last: 3
+color: false
+
+# Verbosity Levels: -2 (disabled), -1 (errors
+# only), 0 (warnings and responses to actions, the default), 1 (info
+# about steps borgmatic is taking), or 2 (debug).
+verbosity: 2
+syslog_verbosity: 2
+monitoring_verbosity: 2
+log_json: true
+statistics: true
+list_details: true
+default_actions: false
+skip_actions:
+    - compact
+
+
+uptime_kuma:
+    # Uptime Kuma push URL without query string (do not include the
+    # question mark or anything after it).
+    push_url: '{{ kuma_push_url }}'
+    states:
+        - start
+        - finish
+        - fail
+
+# Configuration for a monitoring integration with Grafana Loki. You
+# can send the logs to a self-hosted instance or create an account at
+# https://grafana.com/auth/sign-up/create-user. See borgmatic
+# monitoring documentation for details.
+# loki:
+    # Grafana loki log URL to notify when a backup begins,
+    # ends, or fails.
+    # url: http://localhost:3100/loki/api/v1/push
+
+    # Allows setting custom labels for the logging stream. At
+    # least one label is required. "__hostname" gets replaced by
+    # the machine hostname automatically. "__config" gets replaced
+    # by the name of the configuration file. "__config_path" gets
+    # replaced by the full path of the configuration file.
+    # labels:
+        # app: borgmatic
+        # config: __config
+        # hostname: __hostname
+
+# btrfs:

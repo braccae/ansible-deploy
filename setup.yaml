@@ -1,0 +1,57 @@
+---
+- name: CoreOS Init Service Users
+  hosts: coreos
+  remote_user: core
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  become: true
+  tasks:
+    - name: Setup Users
+      ansible.builtin.include_tasks: tasks/init/users.yaml
+
+- name: CoreOS Init
+  hosts: coreos
+  become: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Setup Users
+      ansible.builtin.include_tasks: tasks/init/users.yaml
+
+    - name: Disable SELinux Enforcement - TODO create policies
+      ansible.posix.selinux:
+        policy: targeted
+        state: permissive
+    - name: Setup Systemd Credentials
+      become: true
+      ansible.builtin.command:
+        argv:
+          - systemd-creds
+          - setup
+        creates: /var/lib/systemd/credential.secret
+
+    - name: Set Hostname
+      ansible.builtin.copy:
+        dest: /etc/hostname
+        content: "{{ inventory_hostname }}"
+        owner: root
+        group: root
+        mode: "755"
+
+    - name: Setup Tailscale
+      vars:
+        ts_domain: "{{ inventory_hostname }}.{{ secrets.ts_handle }}.ts.net"
+        cert_renewal_interval: weekly
+      ansible.builtin.include_tasks: tasks/init/tailscale.yml
+
+    - name: Setup Backups
+      ansible.builtin.include_tasks: files/services/backup/tasks/install.yml
+
+    - name: Setup Central DB
+      ansible.builtin.include_tasks: files/services/centraldb/tasks/install.yml
+
+    - name: Setup Crowdsec
+      ansible.builtin.include_tasks: files/services/proxy/tasks/install-crowdsec.yml
+
+    - name: Setup Caddy
+      ansible.builtin.include_tasks: files/services/proxy/tasks/install-caddy.yml

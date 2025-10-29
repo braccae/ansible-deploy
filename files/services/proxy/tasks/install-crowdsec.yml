@@ -1,0 +1,52 @@
+---
+- name: Copy Quadlets
+  become: true
+  ansible.builtin.copy:
+    src: files/services/proxy/quadlets/crowdsec.container
+    dest: /etc/containers/systemd/crowdsec.container
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Create Data Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/appdata/crowdsec/data
+    owner: root
+    group: root
+    mode: '644'
+    state: directory
+
+- name: Create Config Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/appdata/crowdsec/config
+    owner: root
+    group: root
+    mode: '644'
+    state: directory
+
+- name: Create acquis.d Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/appdata/crowdsec/acquis.d
+    owner: root
+    group: root
+    mode: '644'
+    state: directory
+
+- name: Copy acquis.yaml
+  become: true
+  ansible.builtin.copy:
+    src: files/services/proxy/config/crowdsec/crowdsec_aquis.yml
+    dest: /var/appdata/crowdsec/acquis.yaml
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Start Crowdsec Security Engine
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    name: crowdsec.service
+    state: "stopped"

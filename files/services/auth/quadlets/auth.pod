@@ -1,0 +1,32 @@
+[Unit]
+Description=Authentik - Adaptable Authentication Service
+After=podman-user-wait-network-online.service
+
+[Pod]
+# PodName=auth.pod
+PublishPort=9000:9000
+PublishPort=9443:9443
+Network=pasta:-T,5432:5432
+
+# LDAP
+PublishPort=38900:3389
+PublishPort=63600:6636
+# RADIUS
+PublishPort=18120:1812/udp
+
+UserNS=keep-id:uid={{ uid }},gid={{ gid }}
+
+Volume=%h/appdata/auth/media:/media:z
+Volume=%h/appdata/auth/certs:/certs:z
+Volume=%h/appdata/auth/templates:/templates:z
+
+Volume=%h/appdata/auth/valkey:/data:z
+
+# Volume=auth_media:/media:z
+# Volume=auth_certs:/certs:Z
+# Volume=auth_templates:/templates:z
+
+# Volume=auth_valkey:/data:z
+
+[Install]
+WantedBy=default.target

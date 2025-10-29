@@ -1,0 +1,222 @@
+---
+- name: Ensure Quadlet directory
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/openwebui"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Copy Quadlet - openwebui
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/openwebui/openwebui.container"
+    src: ../quadlets/openwebui.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy Quadlet - mcpo
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/openwebui/mcpo.container"
+    src: ../quadlets/mcpo.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy Quadlet - llama.cpp embedding
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/openwebui/llama-cpp.container"
+    src: ../quadlets/llama-cpp.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy Quadlet - tika
+  become: true
+  # when: user != 'root'
+  ansible.builtin.copy:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/openwebui/tika.container"
+    src: ../quadlets/tika.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy Quadlet - pod
+  become: true
+  # when: user != 'root'
+  ansible.builtin.copy:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/openwebui/openwebui.pod"
+    src: ../quadlets/openwebui.pod
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Appdir - config
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/openwebui/config"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Ensure llm_model directory
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/openwebui/llm_models"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Ensure Appdir - mcpo
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/openwebui/mcpo"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Ensure mcp-config.json exists and has default servers
+  block:
+    - name: Stat mcp-config.json
+      become: true
+      ansible.builtin.stat:
+        path: "/var/home/{{ user }}/appdata/openwebui/mcpo/mcp-config.json"
+      register: mcp_config_stat
+
+    - name: Define default mcp servers
+      ansible.builtin.set_fact:
+        default_mcp_servers:
+          mcpServers:
+            context7:
+              command: "npx"
+              args: ["-y", " @upstash/context7-mcp"]
+            fetch:
+              command: "uvx"
+              args: ["mcp-server-fetch"]
+            "sequential-thinking":
+              command: "npx"
+              args: ["-y", " @modelcontextprotocol/server-sequential-thinking"]
+
+    - name: Create mcp-config.json if it does not exist
+      become: true
+      when: not mcp_config_stat.stat.exists
+      ansible.builtin.copy:
+        dest: "/var/home/{{ user }}/appdata/openwebui/mcpo/mcp-config.json"
+        content: "{{ default_mcp_servers | to_nice_json }}"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '644'
+
+    - name: Update existing mcp-config.json
+      when: mcp_config_stat.stat.exists
+      block:
+        - name: Read mcp-config.json
+          become: true
+          ansible.builtin.slurp:
+            src: "/var/home/{{ user }}/appdata/openwebui/mcpo/mcp-config.json"
+          register: mcp_config_content
+
+        - name: Merge existing and default servers
+          ansible.builtin.set_fact:
+            merged_mcp_config: "{{ (mcp_config_content['content'] | b64decode | from_json) | combine(default_mcp_servers, recursive=True) }}"
+
+        - name: Write updated mcp-config.json
+          become: true
+          ansible.builtin.copy:
+            dest: "/var/home/{{ user }}/appdata/openwebui/mcpo/mcp-config.json"
+            content: "{{ merged_mcp_config | to_nice_json }}"
+            owner: "{{ user }}"
+            group: "{{ user }}"
+            mode: '644'
+
+
+- name: Set Fact - DB url
+  ansible.builtin.set_fact:
+    db_url: "postgres://openwebui:{{ db_pass }}@localhost:5432/app_openwebui"
+
+- name: Add Secret - DB url
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: openwebui_db_url
+    data: "{{ db_url }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - Secret Key
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: openwebui_secret_key
+    data: "{{ secret_key }}"
+    state: present
+    skip_existing: false
+
+- name: Create User
+  when: init
+  community.postgresql.postgresql_user:
+    name: openwebui
+    password: "{{ db_pass }}"
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ db_admin_pass }}"
+
+- name: Create database
+  when: init
+  community.postgresql.postgresql_db:
+    login_unix_socket: /run/postgres
+    # login_host:
+    login_user: admin
+    login_password: "{{ db_admin_pass }}"
+    name: app_openwebui
+    owner: openwebui
+    state: present
+
+- name: Start pod
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: openwebui-pod
+    state: "started"
+
+# - name: Proxy Dropin
+#   become: true
+#   ansible.builtin.template:
+#     src: ../config/caddyfile
+#     dest: /var/home/proxy/appdata/caddy/caddyfile.d/openwebui.caddyfile
+#     owner: proxy
+#     group: proxy
+#     mode: '755'
+
+# - name: Backup Dropin
+#   become: true
+#   ansible.builtin.copy:
+#     src: ../config/backup.yaml
+#     dest: /etc/borgmatic.d/20-openwebui.yaml
+#     owner: root
+#     group: root
+#     mode: '755'
+
+# - name: Reload Caddy
+#   become: true
+#   ansible.builtin.systemd_service:
+#     daemon_reload: false
+#     name: caddy
+#     state: "restarted"

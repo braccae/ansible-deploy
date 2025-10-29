@@ -1,0 +1,162 @@
+---
+- name: Ensure postgres socket directory
+  become: true
+  ansible.builtin.copy:
+    content: "d /run/postgres 0777 db db -"
+    dest: /etc/tmpfiles.d/postgres-socket.conf
+    group: root
+    mode: '755'
+
+- name: Activate systemd-tmpfiles
+  become: true
+  ansible.builtin.command:
+    argv:
+      - systemd-tmpfiles
+      - --create
+      - --prefix=/run/postgres
+    creates: /run/postgres
+
+- name: Copy Quadlets
+  become: true
+  ansible.builtin.copy:
+    src: ../quadlets/
+    dest: /etc/containers/systemd/central_db/
+    # dest: /var/home/db/.config/containers/systemd
+    owner: root
+    group: root
+    mode: '755'
+
+# - name: Copy Units
+#   become: true
+#   ansible.builtin.copy:
+#     src: files/units/centraldb/
+#     # dest: /etc/containers/systemd
+#     dest: /var/home/db/.config/systemd/user
+#     owner: db
+#     group: db
+#     mode: '755'
+
+- name: Create Appdata Folder - Postgres
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/db/appdata/postgres/data
+    owner: db
+    group: db
+    mode: '755'
+    state: directory
+
+- name: Create Appdata Folders - Influx
+  become: true
+  block:
+    - name: Create Appdata Folder - Influx Data
+      ansible.builtin.file:
+        dest: /var/home/db/appdata/influx/data
+        owner: db
+        group: db
+        mode: '755'
+        state: directory
+    - name: Create Appdata Folder - Influx Plugins
+      ansible.builtin.file:
+        dest: /var/home/db/appdata/influx/plugins
+        owner: db
+        group: db
+        mode: '755'
+        state: directory
+
+- name: Create Appdata Folder - Mongo
+  when: ansible_hostname != 'cold-war'
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/db/appdata/mongo
+    owner: db
+    group: db
+    mode: '755'
+    state: directory
+
+- name: Create Dumps Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/db/appdata/postgres/dumps
+    owner: db
+    group: db
+    mode: '755'
+    state: directory
+
+- name: Add Podman Secret - Postgres
+  become: true
+  # become_user: db
+  containers.podman.podman_secret:
+    name: central_db_postgres_admin
+    data: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+    state: present
+    skip_existing: false
+
+- name: Add Podman Secret - Mongo
+  when: ansible_hostname != 'cold-war'
+  become: true
+  # become_user: db
+  containers.podman.podman_secret:
+    name: central_db_mongo
+    data: "{{ central_db.secrets.MONGO_DB_ROOT }}"
+    state: present
+    skip_existing: false
+
+- name: Create Central DB Credential Folder
+  become: true
+  ansible.builtin.file:
+    dest: /etc/credstore.encrypted/centraldb
+    owner: root
+    group: root
+    mode: '754'
+    state: directory
+
+- name: Add Systemd Secret - Central DB Postgres Admin
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: >
+      set -o pipefail &&
+      printf %s "{{ central_db.secrets.POSTGRES_ROOT_PASS }}" |
+      systemd-creds encrypt --name=centraldb_postgres - /etc/credstore.encrypted/centraldb/postgres
+  # no_log: true
+    creates: /etc/credstore.encrypted/centraldb/postgres
+
+- name: Add Systemd Secret - Central DB Mongo
+  when: ansible_hostname != 'cold-war'
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: >
+      set -o pipefail &&
+      printf %s "{{ central_db.secrets.MONGO_DB_ROOT }}" |
+      systemd-creds encrypt --name=centraldb_mongo - /etc/credstore.encrypted/centraldb/mongo
+  # no_log: true
+    creates: /etc/credstore.encrypted/centraldb/mongo
+
+- name: Core Backups
+  become: true
+  ansible.builtin.copy:
+    src: files/services/centraldb/config/backup.yaml
+    dest: /etc/borgmatic.d/postgres_core.yaml
+    owner: root
+    group: root
+    mode: '755'
+
+- name: Start Central DB
+  become: true
+  # become_user: db
+  ansible.builtin.systemd_service:
+    # scope: user
+    daemon_reload: true
+    name: central-db-pod
+    state: "restarted"
+
+# - name: Start Mongo
+#   when: ansible_hostname != 'cold-war'
+#   become: true
+#   # become_user: db
+#   ansible.builtin.systemd_service:
+#     # scope: user
+#     daemon_reload: true
+#     name: mongo.service
+#     state: "stopped"

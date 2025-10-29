@@ -1,0 +1,18 @@
+[Unit]
+Description=Central Database Services
+Requires=network-online.target
+After=network-online.target
+
+[Pod]
+
+# InfluxDB 3
+PublishPort=24534:24534
+# MongoDB
+PublishPort=27017:27017
+# PostgreSQL
+PublishPort=5432:5432
+
+Volume=/run/backup:/run/backup:z,rshared
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,26 @@
+[Unit]
+Description=n8n valkey queue
+After=network-online.target
+
+[Container]
+ContainerName=
+Image=docker.io/valkey/valkey:8-alpine
+Exec=valkey-server --save 30 1 --loglevel warning
+Pod=n8n.pod
+User={{ uid }}:{{ gid }}
+Volume=%h/appdata/n8n/valkey:/data:z
+
+PodmanArgs=--memory=1024M
+HealthCmd=valkey-cli ping | grep PONG
+HealthStartupInterval=20s
+HealthInterval=30s
+HealthTimeout=3s
+HealthRetries=5
+HealthStartPeriod=20s
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

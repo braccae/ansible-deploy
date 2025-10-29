@@ -1,0 +1,22 @@
+[Unit]
+Description=Trillium Notes (trillium-next)
+
+[Container]
+Environment=TRILIUM_DATA_DIR=/home/node/trilium-data 
+Environment=USER_UID=1000 
+Environment=USER_GID=1000
+
+Image=ghcr.io/triliumnext/notes:latest
+AutoUpdate=registry
+
+Label=tsdproxy.enable=true tsdproxy.name=notes tsdproxy.container_port=8080
+
+Volume=/var/appdata/trillium-next:/home/node/trilium-data:z
+Volume=/etc/timezone:/etc/timezone:ro
+Volume=/etc/localtime:/etc/localtime:ro
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,126 @@
+---
+- name: Copy Quadlet
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/unifi-network-application.container
+    src: ../quadlets/unifi-network-application.container
+    owner: root
+    group: root
+    mode: '755'
+
+# - name: Copy Quadlets
+#   ansible.builtin.copy:
+#     dest: /etc/containers/systemd
+#     src: ../quadlets
+#     owner: root
+#     group: root
+#     mode: '755'
+
+- name: Ensure Folder - main
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/apps/appdata/unifi/config
+    owner: apps
+    group: apps
+    mode: '775'
+    state: directory
+
+- name: Ensure Folder - backup
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/apps/appdata/unifi/backup
+    owner: apps
+    group: apps
+    mode: '775'
+    state: directory
+
+- name: Template Quadlets - network
+  ansible.builtin.template:
+    dest: /etc/containers/systemd/unifi.network
+    src: ../quadlets/unifi.network
+    owner: root
+    group: root
+    mode: '755'
+
+- name: Add Podman Secret - unifi_db
+  containers.podman.podman_secret:
+    name: unifi_db
+    data: "{{ unifi.secrets.UNIFI_DB }}"
+    state: present
+    skip_existing: false
+
+- name: Add Podman Secret - unifi_db_root
+  containers.podman.podman_secret:
+    name: unifi_db_root
+    data: "{{ unifi.secrets.UNIFI_DB_ROOT }}"
+    state: present
+    skip_existing: false
+
+- name: Ensure pymongo library
+  become: true
+  become_user: ansible
+  ansible.builtin.pip:
+    virtualenv: /home/ansible/venv
+    name: pymongo
+
+- name: Ensure unifi db exists in Mongo (centraldb version)
+  community.mongodb.mongodb_user:
+    name: unifi
+    database: admin
+    password: "{{ db_pass }}"
+    login_user: root
+    login_password: "{{ central_db.secrets.MONGO_DB_ROOT }}"
+    roles:
+      - db: "unifi"
+        role: "dbOwner"
+      - db: "unifi_audit"
+        role: "dbOwner"
+      - db: "unifi_stat"
+        role: "dbOwner"
+
+# - name: Create unifi user with explicit auth settings
+#   community.mongodb.mongodb_user:
+#     login_user: root
+#     login_password: "{{ central_db.secrets.MONGO_DB_ROOT }}"
+#     login_database: admin  # Root user's auth DB
+#     database: auth         # Where to CREATE the user
+#     name: unifi
+#     password: "{{ db_pass }}"
+#     roles:
+#       - db: "unifi"
+#         role: "dbOwner"
+#       - db: "unifi_audit"
+#         role: "dbOwner"
+#       - db: "unifi_stat"
+#         role: "dbOwner"
+#     auth_mechanism: "SCRAM-SHA-256"  # Add this line
+#     state: present
+
+# - name: Start Unifi Pod
+#   ansible.builtin.systemd_service:
+#     daemon_reload: true
+#     enabled: true
+#     scope: "system"
+#     name: unifi-pod.service
+#     state: "started"
+
+- name: Start Unifi Network Application
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "system"
+    name: unifi-network-application.service
+    state: "started"
+
+# - name: Ensure unifi db exists in Mongo (pod version)
+#   community.mongodb.mongodb_user:
+#     name: unifi
+#     database: unifi
+#     password: "{{ db_pass }}"
+#     login_host: 192.168.1.250
+#     login_user: root
+#     login_password: "{{ unifi.secrets.UNIFI_DB_ROOT }}"
+#     roles:
+#       - db: "unifi"
+#         role: "dbOwner"
+#       - db: "unifi_stat"
+#         role: "dbOwner"

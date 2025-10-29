@@ -1,0 +1,10 @@
+[Unit]
+Description=Vaultwarden Pod Unit
+Requires=podman-user-wait-network-online.service
+
+[Pod]
+
+PublishPort=127.0.0.1:41020:80
+Network=pasta:-T,5432:5432
+
+Volume=%h/appdata/vaultwarden:/data:Z
