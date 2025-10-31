@@ -18,12 +18,12 @@ User={{ uid }}:{{ gid }}
 
 Environment=GENERIC_TIMEZONE=America/New_York
 Environment=TZ=America/New_York
-Environment=N8N_USER_FOLDER=/n8n
+Environment=N8N_USER_FOLDER=
 Environment=N8N_PROXY_HOPS=4
 Environment=WEBHOOK_URL="{{ webhook_url }}"
 Secret=n8n_encryption_key,type=env,target=N8N_ENCRYPTION_KEY
 
-Environment=EXECUTIONS_MODE=queue
+Environment=EXECUTIONS_MODE=regular
 Environment=QUEUE_BULL_PREFIX=n8n-app-queue-
 Environment=N8N_RUNNERS_ENABLED=true
 Environment=N8N_RUNNERS_MODE=external
@@ -41,6 +41,8 @@ Secret=n8n_postgres_pass,type=env,target=DB_POSTGRESDB_PASSWORD
 Environment=NODE_FUNCTION_ALLOW_BUILTIN=*
 Environment=NODE_FUNCTION_ALLOW_EXTERNAL=*
 Environment=N8N_RUNNERS_EXTERNAL_ALLOW=*
+Environment=N8N_BLOCK_ENV_ACCESS_IN_NODE=true
+Environment=N8N_GIT_NODE_DISABLE_BARE_REPOS=true
 
 [Service]
 Restart=always

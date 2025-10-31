@@ -9,8 +9,7 @@ UserNS=keep-id:uid={{ uid }},gid={{ gid }}
 PublishPort=127.0.0.1:5678:5678
 Network=pasta:-T,5432:5432
 
-Volume=%h/appdata/n8n:/n8n:rw,z
-Volume=%h/appdata/n8n/data:/n8n/.n8n:rw,z
+Volume=%h/appdata/n8n/data:/home/node:rw,z
 
 [Install]
 WantedBy=default.target

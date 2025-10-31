@@ -11,6 +11,14 @@ Pod=n8n.pod
 ; UserNS=keep-id:uid={{ uid }},gid={{ gid }}
 
 Environment=N8N_RUNNERS_TASK_BROKER_URI=http://127.0.0.1:5679
+Environment=N8N_RUNNERS_LAUNCHER_LOG_LEVEL=debug
+
+Environment=NODE_FUNCTION_ALLOW_BUILTIN=*
+Environment=NODE_FUNCTION_ALLOW_EXTERNAL=*
+Environment=N8N_RUNNERS_STDLIB_ALLOW=*
+Environment=N8N_RUNNERS_EXTERNAL_ALLOW=*
+Environment=N8N_BLOCK_RUNNER_ENV_ACCESS=true
+
 Secret=n8n-runner-auth-token,type=env,target=N8N_RUNNERS_AUTH_TOKEN
 
 [Service]
