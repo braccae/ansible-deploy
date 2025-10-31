@@ -1,0 +1,8 @@
+---
+- name: Reset Tailscale
+  hosts: chuck
+  become: true
+  tasks:
+
+    - name: Setup Caddy + Crowdsec
+      ansible.builtin.include_tasks: files/services/proxy/tasks/install.yaml

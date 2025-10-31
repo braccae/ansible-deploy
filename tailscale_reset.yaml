@@ -1,0 +1,47 @@
+---
+- name: Reset Tailscale
+  hosts: coreos
+  become: true
+  vars:
+    ts_domain: "{{ inventory_hostname }}.{{ secrets.ts_handle }}.ts.net"
+    cert_renewal_interval: weekly
+  tasks:
+    - name: Ensure tailscaled is stopped
+      ansible.builtin.systemd_service:
+        name: tailscaled.service
+        enabled: false
+        state: "stopped"
+
+    - name: Delete Tailscale State Folders
+      ansible.builtin.file:
+        state: absent
+        path: /var/lib/tailscale
+
+    - name: Ensure Tailscale State Folder
+      ansible.builtin.file:
+        state: directory
+        path: /var/lib/tailscale
+        recurse: true
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Ensure tailscaled is started
+      ansible.builtin.systemd_service:
+        name: tailscaled.service
+        enabled: true
+        state: "started"
+
+    - name: Tailscale up
+      ansible.builtin.command:
+        argv:
+          - tailscale
+          - up
+          - --reset
+          - --accept-dns
+          - --ssh=false
+          - --accept-risk=lose-ssh
+          - --auth-key={{ secrets.tailscale_authkey }}
+          - --hostname={{ inventory_hostname }}
+      register: tailscale_up
+      changed_when: tailscale_up.rc == 0
