@@ -181,7 +181,7 @@
         name: virt
         groups:
           - libvirt
-      when: inventory_hostname not in ['the-red-raktuber', 'likes-it-cold']
+      when: inventory_hostname not in ['the-red-raktuber', 'likes-it-cold', 'chuck']
 
     - name: Ensure python venv for ansible
       become: true
@@ -257,7 +257,7 @@
             state: directory
             owner: root
             group: proxy
-            mode: '755'
+            mode: '775'
 
         - name: Template Cert Gen Service
           become: true
@@ -307,8 +307,11 @@
     - name: Setup Central DB
       ansible.builtin.include_tasks: files/services/centraldb/tasks/install.yml
 
-    - name: Setup Crowdsec
-      ansible.builtin.include_tasks: files/services/proxy/tasks/install-crowdsec.yml
+    - name: Setup Proxy
+      ansible.builtin.include_tasks: files/services/proxy/tasks/install.yaml
 
-    - name: Setup Caddy
-      ansible.builtin.include_tasks: files/services/proxy/tasks/install-caddy.yml
+    # - name: Setup Crowdsec
+    #   ansible.builtin.include_tasks: files/services/proxy/tasks/install-crowdsec.yml
+
+    # - name: Setup Caddy
+    #   ansible.builtin.include_tasks: files/services/proxy/tasks/install-caddy.yml
