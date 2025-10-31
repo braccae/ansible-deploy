@@ -8,8 +8,8 @@ User=root
 ExecStart=tailscale cert --cert-file public.crt --key-file private.key {{ ts_domain }}
 ExecStartPost=chown root:proxy /etc/ssl/certs/tailscale/public.crt
 ExecStartPost=chown root:proxy /etc/ssl/certs/tailscale/private.key
-ExecStartPost=chmod 755 /etc/ssl/certs/tailscale/public.crt
-ExecStartPost=chmod 755 /etc/ssl/certs/tailscale/private.key
+ExecStartPost=chmod 775 /etc/ssl/certs/tailscale/public.crt
+ExecStartPost=chmod 775 /etc/ssl/certs/tailscale/private.key
 WorkingDirectory=/etc/ssl/certs/tailscale
 Type=oneshot
 
