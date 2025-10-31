@@ -18,14 +18,14 @@
     group: "{{ user }}"
     mode: '755'
 
-- name: Template Quadlet - Valkey
-  become: true
-  ansible.builtin.template:
-    src: ../quadlets/auth-valkey.container
-    dest: "/var/home/{{ user }}/.config/containers/systemd/auth/auth-valkey.container"
-    owner: "{{ user }}"
-    group: "{{ user }}"
-    mode: '755'
+# - name: Template Quadlet - Valkey
+#   become: true
+#   ansible.builtin.template:
+#     src: ../quadlets/auth-valkey.container
+#     dest: "/var/home/{{ user }}/.config/containers/systemd/auth/auth-valkey.container"
+#     owner: "{{ user }}"
+#     group: "{{ user }}"
+#     mode: '755'
 
 - name: Template Quadlet - auth worker
   become: true
@@ -72,14 +72,14 @@
     group: "{{ user }}"
     mode: '755'
 
-- name: Ensure Valkey Directory
-  become: true
-  ansible.builtin.file:
-    dest: "/var/home/{{ user }}/appdata/auth/valkey"
-    state: directory
-    owner: "{{ user }}"
-    group: "{{ user }}"
-    mode: '755'
+# - name: Ensure Valkey Directory
+#   become: true
+#   ansible.builtin.file:
+#     dest: "/var/home/{{ user }}/appdata/auth/valkey"
+#     state: directory
+#     owner: "{{ user }}"
+#     group: "{{ user }}"
+#     mode: '755'
 
 - name: Add Secret - Authentik PG_PASS
   become: true
