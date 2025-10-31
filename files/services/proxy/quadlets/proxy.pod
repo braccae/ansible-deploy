@@ -1,0 +1,21 @@
+[Unit]
+Description=Reverse Proxy and web server powered by caddy
+
+[Pod]
+
+Network=host
+# PublishPort=8181:8080
+# PublishPort=6161:6060
+
+# Volume=/var/home/proxy/appdata/crowdsec/config:/etc/crowdsec:z
+# Volume=/var/home/proxy/appdata/crowdsec/acquis.d:/etc/crowdsec/acquis.d:z
+# Volume=/var/home/proxy/appdata/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:z
+# Volume=/var/home/proxy/appdata/crowdsec/data:/var/lib/crowdsec/data:z
+
+# Volume=/var/home/proxy/appdata/caddy/config:/config:z
+# Volume=/var/home/proxy/appdata/caddy/data:/data:z
+# Volume=/var/home/proxy/appdata/caddy/caddyfile.d/:/caddyfile.d:z
+# Volume=/etc/ssl/certs/tailscale:/data/tailscale:z
+
+[Install]
+WantedBy=multi-user.target

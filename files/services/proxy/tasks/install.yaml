@@ -1,0 +1,179 @@
+---
+- name: Ensure quadlet Folder
+  become: true
+  ansible.builtin.file:
+    dest: /etc/containers/systemd/proxy
+    owner: root
+    group: root
+    mode: '0644'
+    state: directory
+
+# - name: Copy crowdsec
+#   become: true
+#   ansible.builtin.copy:
+#     src: files/services/proxy/quadlets/crowdsec.container
+#     dest: /etc/containers/systemd/proxy/crowdsec.container
+#     owner: root
+#     group: root
+#     mode: '644'
+
+- name: Copy caddy
+  become: true
+  ansible.builtin.copy:
+    src: files/services/proxy/quadlets/caddy.container
+    dest: /etc/containers/systemd/proxy/
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Copy pod
+  become: true
+  ansible.builtin.copy:
+    src: files/services/proxy/quadlets/proxy.pod
+    dest: /etc/containers/systemd/proxy/proxy.pod
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Create Data Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/crowdsec/data
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+- name: Create Config Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/crowdsec/config
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+- name: Create acquis.d Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/crowdsec/acquis.d
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+- name: Copy acquis.yaml
+  become: true
+  ansible.builtin.copy:
+    src: files/services/proxy/config/crowdsec/crowdsec_aquis.yml
+    dest: /var/home/proxy/appdata/crowdsec/acquis.yaml
+    owner: proxy
+    group: proxy
+    mode: '775'
+
+- name: Create Caddyfile Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/caddy/caddyfile.d
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+- name: Create Config Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/caddy/config
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+- name: Create Data Folder
+  become: true
+  ansible.builtin.file:
+    dest: /var/home/proxy/appdata/caddy/data
+    owner: proxy
+    group: proxy
+    mode: '775'
+    state: directory
+
+- name: Add Secret - admin email
+  become: true
+  # become_user: proxy
+  containers.podman.podman_secret:
+    name: admin_email
+    data: "{{ secrets.admin_email }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - cloudflare api token
+  become: true
+  # become_user: proxy
+  containers.podman.podman_secret:
+    name: caddy_cf_api_token
+    data: "{{ caddy.secrets.CF_API_TOKEN }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - crowdsec api key
+  become: true
+  containers.podman.podman_secret:
+    name: crowdsec_api_key
+    data: "{{ caddy.secrets.CROWDSEC_API_KEY }}"
+    state: present
+    skip_existing: false
+
+- name: Start proxy.pod
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    name: proxy-pod.service
+    state: "started"
+
+# - name: Wait for Crowdsec API to be ready
+#   ansible.builtin.wait_for:
+#     host: localhost
+#     port: 8080
+#     delay: 5
+#     timeout: 120
+#     state: started
+#     search_regex: ".*"
+
+# - name: Register Bouncer in Crowdsec
+#   become: true
+#   containers.podman.podman_container_exec:
+#     name: systemd-crowdsec
+#     argv:
+#       - cscli
+#       - bouncers
+#       - add
+#       - caddy-bouncer
+#       - --key
+#       - "{{ caddy.secrets.CROWDSEC_API_KEY }}"
+#   register: result
+#   failed_when: result.rc != 0 and not (result.rc == 1 and 'already exists' in result.stderr)
+
+- name: Allow http in Public Zone
+  ansible.posix.firewalld:
+    state: enabled
+    zone: public
+    service: "http"
+    immediate: true
+    permanent: true
+
+- name: Allow http2 in Public Zone
+  ansible.posix.firewalld:
+    state: enabled
+    zone: public
+    service: "http3"
+    immediate: true
+    permanent: true
+
+- name: Allow https in Public Zone
+  ansible.posix.firewalld:
+    state: enabled
+    zone: public
+    service: "https"
+    immediate: true
+    permanent: true

@@ -6,8 +6,9 @@ After=crowdsec.service
 Image=ghcr.io/braccae/caddy:latest
 AutoUpdate=registry
 User=2600:2600
-# UIDMap=1000:2600:1
 LogDriver=journald
+GroupAdd=190
+# Pod=proxy.pod
 
 # PublishPort=80:80
 # PublishPort=443:443

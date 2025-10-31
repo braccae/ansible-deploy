@@ -3,15 +3,18 @@ Description=Crowdsec Security Engine
 After=network-online.target
 
 [Container]
-Environment="COLLECTIONS=crowdsecurity/caddy crowdsecurity/sshd firix/authentik LePresidente/jellyfin crowdsecurity/pgsql"
 Image=docker.io/crowdsecurity/crowdsec:latest-debian
 AutoUpdate=registry
+User=2600:2600
+LogDriver=journald
 GroupAdd=190
+Pod=proxy.pod
 
-# Network=host
+Environment="COLLECTIONS=crowdsecurity/caddy crowdsecurity/sshd firix/authentik LePresidente/jellyfin crowdsecurity/pgsql"
+
 AddCapability=CAP_NET_ADMIN CAP_NET_RAW
-PublishPort=8181:8080
-PublishPort=6161:6060
+# PublishPort=8181:8080
+# PublishPort=6161:6060
 
 Volume=/var/appdata/crowdsec/config:/etc/crowdsec:z
 Volume=/var/appdata/crowdsec/acquis.d:/etc/crowdsec/acquis.d:z
@@ -19,7 +22,7 @@ Volume=/var/appdata/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:z
 Volume=/var/appdata/crowdsec/data:/var/lib/crowdsec/data:z
 
 Volume=/var/log/journal:/run/log/journal:ro,z
-# Volume=/var/log:/logs:ro
+# # Volume=/var/log:/logs:ro
 
 [Service]
 Restart=always
