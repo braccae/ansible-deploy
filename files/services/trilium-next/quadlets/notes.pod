@@ -1,0 +1,8 @@
+[Unit]
+Description=Triullium Notes Pod
+
+[Pod]
+PublishPort=46549:8080
+
+[Install]
+WantedBy=multi-user.target.target

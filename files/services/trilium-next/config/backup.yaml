@@ -1,0 +1,36 @@
+<<: !include /etc/borgmatic/common.yaml
+
+archive_name_format: 'trilium-next-{now}'
+
+source_directories:
+    - /var/appdata/trilium-next/data
+
+# Exclude all .db files as they'll be handled by the sqlite hook
+exclude_patterns:
+    - '*.db'
+
+# Handle all SQLite databases properly
+sqlite_databases:
+    - name: document
+      path: /var/appdata/trilium-next/data/document.db
+    - name: backup-before-migration
+      path: /var/appdata/trilium-next/data/backup/backup-before-migration.db
+    - name: backup-daily
+      path: /var/appdata/trilium-next/data/backup/backup-daily.db
+    - name: backup-monthly
+      path: /var/appdata/trilium-next/data/backup/backup-monthly.db
+    - name: backup-weekly
+      path: /var/appdata/trilium-next/data/backup/backup-weekly.db
+
+commands:
+    - before: configuration
+      when:
+        - create
+      run:
+        - "{root_helper} systemctl stop trilium"
+
+    - after: configuration
+      when:
+        - create
+      run:
+        - "{root_helper} systemctl start trilium"

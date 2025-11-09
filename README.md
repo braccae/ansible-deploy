@@ -33,7 +33,7 @@ The following services are still under development and may not be fully function
 *   **Ollama**
 *   **Proxy**
 *   **Shorts-Bot**
-*   **Trillium-Next**
+*   **trilium-Next**
 *   **Warrior**
 
 ## Ansible Roles and Playbooks

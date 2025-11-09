@@ -1,0 +1,18 @@
+---
+- name: Setup Rootful Services
+  hosts: coreos
+  become: true
+  vars:
+    init: true
+    restore: false
+
+  tasks:
+    - name: Install trilium Notes
+      when: ansible_hostname in ['pong']
+      vars:
+        user: apps
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+        ts_proxykey: "{{ secrets.tailscale_proxykey }}"
+      ansible.builtin.include_tasks: files/services/trilium-next/tasks/install.yaml

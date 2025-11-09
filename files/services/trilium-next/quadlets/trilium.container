@@ -9,7 +9,7 @@ Environment=USER_GID={{ gid }}
 Image=ghcr.io/triliumnext/notes:latest
 AutoUpdate=registry
 Pod=notes.pod
-Volume=/var/appdata/trillium-next/data:/home/node/trilium-data:z
+Volume=/var/appdata/trilium-next/data:/home/node/trilium-data:z
 
 Timezone=local
 

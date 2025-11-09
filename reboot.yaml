@@ -9,7 +9,8 @@
       ansible.builtin.command:
         argv:
           - bootc
-          - upgrade
+          - switch
+          - ghcr.io/braccae/coreos:fedora
       changed_when: bootc
 
     - name: Reboot systems

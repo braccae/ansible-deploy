@@ -1,0 +1,73 @@
+---
+- name: Ensure quadlet Folder
+  become: true
+  ansible.builtin.file:
+    dest: /etc/containers/systemd/trilium-next
+    owner: root
+    group: root
+    mode: '0644'
+    state: directory
+
+- name: Template trilium-next Quadlet
+  become: true
+  ansible.builtin.template:
+    src: ../quadlets/trilium.container
+    dest: /etc/containers/systemd/trilium-next/trilium.container
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Template tsnsrv Quadlet
+  become: true
+  vars:
+    service_name: notes
+    internal_port: 8080
+  ansible.builtin.template:
+    src: quadlets/tsnsrv.container.j2
+    dest: /etc/containers/systemd/trilium-next/trilium-tsnsrv.container
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Copy trillium-next Pod Quadlet
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/containers/systemd/trillium-next/notes.pod
+    src: ../quadlets/notes.pod
+    owner: root
+    group: root
+    mode: '644'
+
+- name: Ensure Secret - ts proxykey
+  become: true
+  containers.podman.podman_secret:
+    name: ts_proxykey
+    data: "{{ ts_proxykey }}"
+    state: present
+    skip_existing: false
+
+- name: Ensure data directory exists
+  become: true
+  ansible.builtin.file:
+    dest: "/var/appdata/trilium-next/data"
+    owner: "{{ uid }}"
+    group: "{{ gid }}"
+    mode: '0755'
+    state: directory
+
+- name: Setup backup configuration
+  become: true
+  ansible.builtin.template:
+    src: ../config/backup.yaml
+    dest: /etc/borgmatic.d/trilium.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Start trilium-next
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    name: trilium-pod
+    state: "restarted"

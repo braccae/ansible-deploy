@@ -20,6 +20,9 @@ repositories:
 exclude_if_present:
     - .nobackup
 
+# patterns:
+#     - + /run/backup/borgmatic
+
 encryption_passphrase: "{credential systemd borgmatic.pw}"
 
 relocated_repo_access_is_ok: true

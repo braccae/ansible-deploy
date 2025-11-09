@@ -1,0 +1,9 @@
+---
+- name: Update Backup dir
+  hosts: coreos
+  become: true
+  tasks:
+    - name: Setup Backups
+      vars:
+        kuma_push_url: "{{ borgmatic.secrets.UPTIME_KUMA }}"
+      ansible.builtin.include_tasks: files/services/backup/tasks/install.yml
