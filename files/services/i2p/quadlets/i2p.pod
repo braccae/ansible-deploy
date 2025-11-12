@@ -1,0 +1,23 @@
+[Unit]
+Description=i2p pod (i2p service + tailscale sidecar)
+After=podman-user-wait-network-online.service
+
+[Pod]
+PodName=i2p.pod
+
+# Expose the same ports the container previously did
+PublishPort=4444:4444
+PublishPort=6668:6668
+PublishPort=7655:7655
+PublishPort=7656:7656
+PublishPort=2827:2827
+PublishPort=7654:7654
+PublishPort=7070:7070
+PublishPort=49573:49573
+PublishPort=49573:49573/udp
+
+# Shared volume for tailscale state
+Volume=i2p-ts:/var/lib/tailscale:Z
+
+[Install]
+WantedBy=multi-user.target

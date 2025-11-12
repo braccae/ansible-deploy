@@ -1,0 +1,25 @@
+[Unit]
+Description=tailscale for i2p
+Requires=network-online.target
+
+[Container]
+Pod=i2p.pod
+Image=ghcr.io/tailscale/tailscale:latest
+AutoUpdate=registry
+
+AddDevice=/dev/net/tun:/dev/net/tun
+AddCapability=net_admin
+
+# Expect an env secret named i2p_tskey to be provided at deploy time
+Secret=i2p_tskey,type=env,target=TS_AUTHKEY
+Environment=TS_EXTRA_ARGS=
+Environment=TS_HOSTNAME=i2p
+Environment=TS_STATE_DIR=/var/lib/tailscale
+
+Timezone=UTC
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
