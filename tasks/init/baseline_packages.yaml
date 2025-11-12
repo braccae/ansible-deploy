@@ -1,0 +1,87 @@
+---
+- name: Setup repositories for EL systems
+  when: "'bootc' not in group_names and ansible_os_family == 'RedHat'"
+  block:
+    - name: Get RHEL version
+      ansible.builtin.shell: set -o pipefail && rpm -E %rhel
+      register: rhel_version
+      changed_when: false
+
+    - name: Get distribution
+      ansible.builtin.shell: set -o pipefail && rpm --eval "%{dist}"
+      register: dist
+      changed_when: false
+
+    - name: Install EPEL repository
+      ansible.builtin.dnf:
+        name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ rhel_version.stdout }}.noarch.rpm"
+        state: present
+        disable_gpg_check: true
+
+    - name: Install RPM Fusion repositories
+      ansible.builtin.dnf:
+        name:
+          - "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-{{ rhel_version.stdout }}.noarch.rpm"
+          - "https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-{{ rhel_version.stdout }}.noarch.rpm"
+        state: present
+        disable_gpg_check: true
+
+    - name: Install OpenZFS repository
+      ansible.builtin.dnf:
+        name: "https://zfsonlinux.org/epel/zfs-release-2-8{{ dist.stdout }}.noarch.rpm"
+        state: present
+        disable_gpg_check: true
+
+    - name: Add Tailscale repository
+      ansible.builtin.get_url:
+        url: "https://pkgs.tailscale.com/stable/rhel/{{ rhel_version.stdout }}/tailscale.repo"
+        dest: /etc/yum.repos.d/tailscale.repo
+        mode: '0644'
+
+    - name: Copy additional repository files
+      ansible.builtin.copy:
+        src: repos/
+        dest: /etc/yum.repos.d/
+        mode: '0644'
+      failed_when: false
+
+    - name: Install uv (Python package manager)
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="/usr/bin" sh
+      args:
+        creates: /usr/bin/uv
+
+    - name: Install rclone
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl https://rclone.org/install.sh | bash
+      args:
+        creates: /usr/bin/rclone
+
+    - name: Update package cache
+      ansible.builtin.dnf:
+        update_cache: true
+
+- name: Install required packages for non-bootc
+  ansible.builtin.package:
+    name:
+      - qemu-guest-agent
+      - just
+      - tuned
+      - realmd
+      - sssd
+      - tailscale
+      - firewalld
+      - sqlite
+      - borgbackup
+      - fuse
+      - rclone
+      - rsync
+      - python3-psycopg2
+      - xdg-user-dirs
+      - python3-pip
+      - git
+      - tmux
+    state: present
+  when: "'bootc' not in group_names"

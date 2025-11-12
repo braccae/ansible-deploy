@@ -1,11 +1,14 @@
 ---
-- name: CoreOS Init Service Users
-  hosts: coreos
-  remote_user: core
+
+- name: Init Service Users
+  hosts: init
+  # remote_user: core
   vars:
     ansible_python_interpreter: /usr/bin/python3
   become: true
   tasks:
+    - name: Setup baseline packages and repositories
+      ansible.builtin.include_tasks: tasks/init/baseline_packages.yaml
 
 - name: Configure Timezone
   hosts: coreos
@@ -181,7 +184,7 @@
         name: virt
         groups:
           - libvirt
-      when: inventory_hostname not in ['the-red-raktuber', 'likes-it-cold', 'chuck']
+      when: "'hci' in group_names"
 
     - name: Ensure python venv for ansible
       become: true
@@ -194,8 +197,8 @@
           - /home/ansible/venv
         creates: /home/ansible/venv
 
-- name: CoreOS Init
-  hosts: coreos
+- name: Core Init
+  hosts: init
   become: true
   vars:
     ansible_python_interpreter: /usr/bin/python3
