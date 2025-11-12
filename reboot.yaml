@@ -1,6 +1,6 @@
 ---
 - name: Reboot
-  hosts: coreos
+  hosts: init
   become: true
   tasks:
     - name: Bootc Upgrade
@@ -9,9 +9,9 @@
       ansible.builtin.command:
         argv:
           - bootc
-          - switch
-          - ghcr.io/braccae/coreos:fedora
+          - upgrade
       changed_when: bootc
+      when: "'bootc' in group_names"
 
     - name: Reboot systems
       ansible.builtin.reboot:
