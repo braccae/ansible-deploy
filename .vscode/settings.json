@@ -1,5 +1,4 @@
 {
-    "ansible.python.interpreterPath": "/home/andrew/.dev/deployments/ansible-deploy/.venv/bin/python",
     "devdocs-adapter.docsets": [
         "ansible",
         "astro",
@@ -10,5 +9,7 @@
     ],
     "yaml.schemas": {
         "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/playbook": "file:///var/home/andrew/.dev/deployments/ansible-deploy/ping.yaml"
-    }
+    },
+    "redhat.telemetry.enabled": true,
+    "birdseye.pythonPath": "python"
 }

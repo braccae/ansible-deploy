@@ -13,10 +13,6 @@
 			"https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/playbook": "file:///var/home/andrew/.dev/deployments/ansible-deploy/ping.yaml"
 		},
 		"redhat.telemetry.enabled": true,
-		"birdseye.pythonPath": ".venv-uv/bin/python",
-		"ansible.ansible.path": ".venv-uv/bin/ansible",
-		"ansible.python.interpreterPath": ".venv-uv/bin/python",
-		"ansible.ansibleNavigator.path": ".venv-uv/bin/ansible-navigator",
-		"ansible.validation.lint.path": ".venv-uv/bin/ansible-lint"
+		"ansible.python.interpreterPath": "/usr/bin/python"
 	}
 }
