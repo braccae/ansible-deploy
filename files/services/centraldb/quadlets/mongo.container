@@ -8,7 +8,8 @@ AutoUpdate=registry
 
 User=2500:2500
 
-# Pod=central-db.pod
+Pod=central-db.pod
+StartWithPod=false
 # PublishPort=27017:27017
 
 Volume=/var/home/db/appdata/mongo:/data/db:Z
