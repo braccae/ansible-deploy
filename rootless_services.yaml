@@ -1,6 +1,6 @@
 ---
 - name: Setup Rootless Services
-  hosts: coreos
+  hosts: init
   become: true
   vars:
     init: true
@@ -113,9 +113,24 @@
         ts_proxykey: "{{ secrets.tailscale_proxykey }}"
       ansible.builtin.include_tasks: files/services/it-tools/tasks/install.yaml
 
+    - name: Install NocoDB
+      when: ansible_hostname in ['the-freezer']
+      vars:
+        user: apps
+        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+        uid: "{{ user_data.uid }}"
+        gid: "{{ user_data.gid }}"
+        nocodb_public_url: "{{ nocodb.vars.BASE_URL }}"
+        nocodb_admin_email: "{{ nocodb.vars.ADMIN_EMAIL }}"
+        jwt_secret: "{{ nocodb.secrets.JWT_SECRET }}"
+        admin_password: "{{ nocodb.secrets.ADMIN_PASSWORD }}"
+        db_pass: "{{ nocodb.secrets.DB_PASS }}"
+        db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+      ansible.builtin.include_tasks: files/services/nocodb/tasks/install.yaml
+
 - name: Dropins
   become: true
-  hosts: coreos
+  hosts: init
   vars:
     init: true
     restore: false
@@ -155,6 +170,19 @@
       ansible.builtin.template:
         dest: /var/home/proxy/appdata/caddy/caddyfile.d/00-cockpit.caddyfile
         src: templates/caddyfile/caddyfile_https_ts.j2
+        owner: proxy
+        group: proxy
+        mode: "755"
+
+    - name: Proxy Dropin - nocodb
+      when: ansible_hostname in ['the-freezer']
+      become: true
+      vars:
+        upstream: "localhost:8080"
+        domain: "{{ nocodb.vars.BASE_URL }}"
+      ansible.builtin.template:
+        src: templates/caddyfile/caddyfile_http.j2
+        dest: /var/home/proxy/appdata/caddy/caddyfile.d/20-nocodb.caddyfile
         owner: proxy
         group: proxy
         mode: "755"

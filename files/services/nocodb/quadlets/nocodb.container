@@ -1,0 +1,58 @@
+[Unit]
+Description=NocoDB - Open Source Airtable Alternative
+Requires=podman-user-wait-network-online.service
+
+[Container]
+AutoUpdate=registry
+Image=docker.io/nocodb/nocodb:latest
+Pod=nocodb.pod
+User={{ uid }}:{{ gid }}
+
+
+
+Environment=NC_PUBLIC_URL={{ nocodb_public_url }}
+Environment=PORT=8080
+
+Environment=NC_REDIS_URL=redis://localhost:6379/0
+
+Environment=NC_ADMIN_EMAIL={{ nocodb_admin_email }}
+
+Environment=NC_DB_QUERY_LIMIT_DEFAULT=25
+Environment=NC_DB_QUERY_LIMIT_MAX=1000
+Environment=NC_DB_QUERY_LIMIT_MIN=10
+Environment=NC_ATTACHMENT_FIELD_SIZE=20971520
+Environment=NC_MAX_ATTACHMENTS_ALLOWED=10
+Environment=NC_ATTACHMENT_RETENTION_DAYS=10
+
+Environment=NC_DISABLE_TELE=false
+Environment=NC_DISABLE_ERR_REPORTS=true
+Environment=NC_DISABLE_SUPPORT_CHAT=false
+
+Environment=NC_INVITE_ONLY_SIGNUP=true
+Environment=NC_CONNECT_TO_EXTERNAL_DB_DISABLED=false
+Environment=NC_ALLOW_LOCAL_HOOKS=false
+Environment=NC_SANITIZE_COLUMN_NAME=true
+
+Environment=NC_AUTOMATION_LOG_LEVEL=ERROR
+Environment=NC_DISABLE_AUDIT=false
+Environment=NC_DISABLE_CACHE=false
+
+Secret=nocodb_postgres_pass,type=env,target=NC_DB
+Secret=nocodb_jwt_secret,type=env,target=NC_AUTH_JWT_SECRET
+Secret=nocodb_admin_pass,type=env,target=NC_ADMIN_PASSWORD
+
+HealthCmd=curl -f http://localhost:8080/health || exit 1
+HealthStartupInterval=30s
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=5
+HealthStartPeriod=60s
+
+PodmanArgs=--memory=2048M
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

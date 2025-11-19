@@ -1,0 +1,124 @@
+---
+- name: Ensure Quadlet directory
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/nocodb"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Copy nocodb container
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/nocodb/nocodb.container"
+    src: ../quadlets/nocodb.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy pod
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/nocodb/nocodb.pod"
+    src: ../quadlets/nocodb.pod
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Copy valkey
+  become: true
+  # when: user != 'root'
+  ansible.builtin.template:
+    dest: "/var/home/{{ user }}/.config/containers/systemd/nocodb/nocodb-valkey.container"
+    src: ../quadlets/nocodb-valkey.container
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+
+- name: Ensure Appdir - Rootless
+  become: true
+  # when: user != 'root'
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/nocodb/data"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Ensure Valkey Appdir
+  ansible.builtin.file:
+    dest: "/var/home/{{ user }}/appdata/nocodb/valkey"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '755'
+    state: directory
+
+- name: Add Secret - DB Connection String
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: nocodb_postgres_pass
+    data: "pg://localhost:5432?u=nocodb&p={{ db_pass }}&d=app_nocodb"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - JWT Secret
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: nocodb_jwt_secret
+    data: "{{ jwt_secret }}"
+    state: present
+    skip_existing: false
+
+- name: Add Secret - Admin Password
+  become: true
+  become_user: "{{ user }}"
+  containers.podman.podman_secret:
+    name: nocodb_admin_pass
+    data: "{{ admin_password }}"
+    state: present
+    skip_existing: false
+
+- name: Create User
+  when: init
+  community.postgresql.postgresql_user:
+    name: nocodb
+    password: "{{ nocodb.secrets.DB_PASS }}"
+    login_unix_socket: /run/postgres
+    login_user: admin
+    login_password: "{{ db_admin_pass }}"
+
+- name: Create database
+  when: init
+  community.postgresql.postgresql_db:
+    login_unix_socket: /run/postgres
+    # login_host:
+    login_user: admin
+    login_password: "{{ db_admin_pass }}"
+    name: app_nocodb
+    owner: nocodb
+    state: present
+
+- name: Start nocodb
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    enabled: true
+    scope: "user"
+    name: nocodb-pod
+    state: "restarted"
+
+- name: Backup Dropin - nocodb
+  become: true
+  ansible.builtin.template:
+    src: ../config/backup.yaml
+    dest: /etc/borgmatic.d/20-nocodb.yaml
+    owner: root
+    group: root
+    mode: '755'
