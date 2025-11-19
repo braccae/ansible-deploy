@@ -8,20 +8,20 @@
     mode: '0644'
     state: directory
 
-# - name: Copy crowdsec
-#   become: true
-#   ansible.builtin.copy:
-#     src: files/services/proxy/quadlets/crowdsec.container
-#     dest: /etc/containers/systemd/proxy/crowdsec.container
-#     owner: root
-#     group: root
-#     mode: '644'
+- name: Copy crowdsec
+  become: true
+  ansible.builtin.copy:
+    src: files/services/proxy/quadlets/crowdsec.container
+    dest: /etc/containers/systemd/proxy/crowdsec.container
+    owner: root
+    group: root
+    mode: '644'
 
 - name: Copy caddy
   become: true
   ansible.builtin.copy:
     src: files/services/proxy/quadlets/caddy.container
-    dest: /etc/containers/systemd/proxy/
+    dest: /etc/containers/systemd/proxy/caddy.container
     owner: root
     group: root
     mode: '644'
@@ -131,28 +131,28 @@
     name: proxy-pod.service
     state: "started"
 
-# - name: Wait for Crowdsec API to be ready
-#   ansible.builtin.wait_for:
-#     host: localhost
-#     port: 8080
-#     delay: 5
-#     timeout: 120
-#     state: started
-#     search_regex: ".*"
+- name: Wait for Crowdsec API to be ready
+  ansible.builtin.wait_for:
+    host: localhost
+    port: 8080
+    delay: 5
+    timeout: 120
+    state: started
+    search_regex: ".*"
 
-# - name: Register Bouncer in Crowdsec
-#   become: true
-#   containers.podman.podman_container_exec:
-#     name: systemd-crowdsec
-#     argv:
-#       - cscli
-#       - bouncers
-#       - add
-#       - caddy-bouncer
-#       - --key
-#       - "{{ caddy.secrets.CROWDSEC_API_KEY }}"
-#   register: result
-#   failed_when: result.rc != 0 and not (result.rc == 1 and 'already exists' in result.stderr)
+- name: Register Bouncer in Crowdsec
+  become: true
+  containers.podman.podman_container_exec:
+    name: systemd-crowdsec
+    argv:
+      - cscli
+      - bouncers
+      - add
+      - caddy-bouncer
+      - --key
+      - "{{ caddy.secrets.CROWDSEC_API_KEY }}"
+  register: result
+  failed_when: result.rc != 0 and not (result.rc == 1 and 'already exists' in result.stderr)
 
 - name: Allow http in Public Zone
   ansible.posix.firewalld:
