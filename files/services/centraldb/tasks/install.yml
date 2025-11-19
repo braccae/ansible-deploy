@@ -135,6 +135,7 @@
 
 - name: Core Backups
   become: true
+  when: "'nobackup' not in group_names"
   ansible.builtin.copy:
     src: files/services/centraldb/config/backup.yaml
     dest: /etc/borgmatic.d/postgres_core.yaml

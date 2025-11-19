@@ -24,7 +24,7 @@
   ansible.builtin.copy:
     content: |
       d /run/backup 0777 backup backup -
-    dest: /etc/tmpfiles.d/borgmatic-user-runtime.conf
+    dest: /etc/tmpfiles.d/backup-runtime.conf
     group: root
     mode: '755'
 
@@ -131,7 +131,7 @@
     full_access_keys: []
     quota_enabled: true
     quota: 51200
-    alert_days: 1
+    alert_days: 7
     append_only: true
     append_only_keys: ["{{ borgbase_key.key_id }}"]
   register: borgbase_repo
@@ -171,10 +171,10 @@
   changed_when: result.rc == 0
   failed_when: result.rc == 2 and 'A repository already exists at' not in result.stderr or result.rc != 2 and result.rc != 0
 
-- name: Enable Borgmatic
-  become: true
-  ansible.builtin.systemd_service:
-    daemon_reload: true
-    enabled: true
-    name: borgmatic.timer
-    state: "started"
+# - name: Enable Borgmatic
+#   become: true
+#   ansible.builtin.systemd_service:
+#     daemon_reload: true
+#     enabled: true
+#     name: borgmatic.timer
+#     state: "started"
