@@ -1,39 +1,45 @@
 ---
 
-- name: Init Service Users
+- name: Init Users
   hosts: init
   # remote_user: core
   vars:
     ansible_python_interpreter: /usr/bin/python3
   become: true
   tasks:
-    - name: Setup baseline packages and repositories
-      ansible.builtin.include_tasks: tasks/init/baseline_packages.yaml
 
-- name: Configure Timezone
-  hosts: coreos
-  become: true
-  tasks:
     - name: Set system timezone to America/New_York
       community.general.timezone:
         name: America/New_York
-
-    - name: Create Groups
-      become: true
-      ansible.builtin.group:
-        name: "{{ item.name }}"
-        gid: "{{ item.gid | default(omit) }}"
-        state: present
-      loop: "{{ service_users }}"
 
     - name: Create users
       become: true
       ansible.builtin.user:
         name: "{{ item.name }}"
-        uid: "{{ item.uid | default(omit) }}"
+        uid: "{{ item.uid }}"
+        home: "/home/{{ item.name }}"
         group: "{{ item.name }}"
         state: present
+        expires: -1
       loop: "{{ service_users }}"
+
+    - name: Create Groups
+      become: true
+      ansible.builtin.group:
+        name: "{{ item.name }}"
+        gid: "{{ item.gid }}"
+        state: present
+      loop: "{{ service_users }}"
+
+    # - name: Correct ownership of user home directories
+    #   become: true
+    #   ansible.builtin.file:
+    #     path: "/var/home/{{ item.name }}"
+    #     owner: "{{ item.uid }}"
+    #     group: "{{ item.gid }}"
+    #     mode: '0700'
+    #     recurse: true
+    #   loop: "{{ service_users }}"
 
     - name: Create User Folders
       become: true
@@ -191,8 +197,7 @@
       become_user: ansible
       ansible.builtin.command:
         argv:
-          - python3
-          - -m
+          - uv
           - venv
           - /home/ansible/venv
         creates: /home/ansible/venv
@@ -203,6 +208,9 @@
   vars:
     ansible_python_interpreter: /usr/bin/python3
   tasks:
+    - name: Setup baseline packages and repositories for non-bootc systems
+      when: "'package_managed' in group_names"
+      ansible.builtin.include_tasks: tasks/init/baseline_packages.yaml
 
     - name: Setup Systemd Credentials
       become: true
@@ -303,6 +311,7 @@
             permanent: true
 
     - name: Setup Backups
+      when: "'nobackup' not in group_names"
       vars:
         kuma_push_url: "{{ borgmatic.secrets.UPTIME_KUMA }}"
       ansible.builtin.include_tasks: files/services/backup/tasks/install.yml
