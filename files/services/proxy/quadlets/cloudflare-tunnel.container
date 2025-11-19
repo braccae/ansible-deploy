@@ -8,8 +8,8 @@ Exec=tunnel --no-autoupdate run --token $TUNNEL_TOKEN
 Image=docker.io/cloudflare/cloudflared:latest
 AutoUpdate=registry
 Network=host
-Secret=cf_tunnel,type=env,target=TUNNEL_TOKEN
-
+# Secret=cf_tunnel,type=env,target=TUNNEL_TOKEN
+Pod=proxy.pod
 [Service]
 Restart=always
 TimeoutSec=600
