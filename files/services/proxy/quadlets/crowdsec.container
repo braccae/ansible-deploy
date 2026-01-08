@@ -9,6 +9,7 @@ AutoUpdate=registry
 LogDriver=journald
 GroupAdd=190
 Pod=proxy.pod
+StartWithPod=false
 
 Environment="COLLECTIONS=crowdsecurity/caddy crowdsecurity/sshd firix/authentik LePresidente/jellyfin crowdsecurity/pgsql"
 

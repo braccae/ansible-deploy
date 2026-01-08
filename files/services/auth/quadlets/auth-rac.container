@@ -1,7 +1,19 @@
+[Unit]
+Description=Authentik RAC Outpost
+After=auth-pod.service
+
 [Container]
-Environment=AUTHENTIK_HOST=https://authentik.company 
-Environment=AUTHENTIK_INSECURE=false 
-Environment=AUTHENTIK_TOKEN=token-generated-by-authentik
+Environment=AUTHENTIK_HOST=https://auth.pants.place
+Environment=AUTHENTIK_INSECURE=false
+Secret=authentik_rac_token,type=env,target=AUTHENTIK_TOKEN
+# Environment=AUTHENTIK_TOKEN=token-generated-by-authentik
 Image=ghcr.io/goauthentik/rac
 AutoUpdate=registry
 Pod=auth.pod
+
+[Service]
+Restart=always
+TimeoutSec=600
+
+[Install]
+WantedBy=default.target

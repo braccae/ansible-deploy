@@ -1,0 +1,9 @@
+[Unit]
+Description=Webtop container shit
+
+[Pod]
+PublishPort=3000:3000
+PublishPort=3001:3001
+
+[Install]
+WantedBy=default.target

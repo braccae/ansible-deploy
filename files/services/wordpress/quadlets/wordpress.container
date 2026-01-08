@@ -1,0 +1,20 @@
+[Unit]
+Description=wordpress
+
+[Container]
+Image=docker.io/wordpress:apache
+AutoUpdate=registry
+PublishPort=8096:80
+UserNS=keep-id
+Network=pasta:-T,3306:3306
+
+Volume=%h/appdata/wordpress:/var/www/html:z
+
+Environment=WORDPRESS_DB_HOST=127.0.0.1
+Environment=WORDPRESS_DB_USER=wordpress
+Environment=WORDPRESS_DB_NAME=wordpress
+Secret=wp-db-pass,type=env,target=WORDPRESS_DB_PASSWORD
+
+[Install]
+# Start by default on boot
+WantedBy=default.target

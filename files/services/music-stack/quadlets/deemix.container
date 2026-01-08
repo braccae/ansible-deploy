@@ -9,12 +9,12 @@ Environment=PGID=2700
 Environment=UMASK_SET=022
 Image=ghcr.io/bambanah/deemix:latest
 AutoUpdate=registry
-PodmanArgs=--memory 2gb
+PodmanArgs=--memory 8gb
 UserNS=keep-id
 # User=2700:2700
 PublishPort=6595:6595
-Volume=%h/appdata/deemix:/config:z
-Volume=/mnt/HDD/Media/Music/Loose:/downloads
+Volume=/var/home/media/appdata/deemix:/config:z
+Volume=/mnt/HDD/Downloads:/mnt/Downloads
 
 [Service]
 Restart=always

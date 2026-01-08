@@ -8,12 +8,12 @@ AutoUpdate=registry
 User=2600:2600
 LogDriver=journald
 GroupAdd=190
-# Pod=proxy.pod
+Pod=proxy.pod
 
 # PublishPort=80:80
 # PublishPort=443:443
 
-Network=host
+# Network=host
 Volume=/var/home/proxy/appdata/caddy/config:/config:z
 Volume=/var/home/proxy/appdata/caddy/data:/data:z
 Volume=/var/home/proxy/appdata/caddy/caddyfile.d/:/caddyfile.d:z

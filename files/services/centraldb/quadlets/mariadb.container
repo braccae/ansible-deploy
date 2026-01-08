@@ -1,0 +1,36 @@
+[Unit]
+Description=MariaDB Central Database
+After=multi-user.target
+
+[Container]
+Image=docker.io/mariadb:lts
+AutoUpdate=registry
+PublishPort=3306:3306
+
+Volume=/var/appdata/mariadb/data:/var/lib/mysql:z
+Volume=/var/appdata/mariadb/backup:/backup:z
+
+# Root password from secret
+Secret=mariadb_root_password,type=env,target=MARIADB_ROOT_PASSWORD
+
+# Optional: Create a user for applications
+Environment=MARIADB_USER=wordpress
+Secret=wp-db-pass,type=env,target=MARIADB_PASSWORD
+Environment=MARIADB_DATABASE=wordpress
+
+# Enable automatic upgrades
+Environment=MARIADB_AUTO_UPGRADE=1
+
+# Enable localhost user with privileges for mariadb-backup
+Environment=MARIADB_MYSQL_LOCALHOST_USER=1
+Environment=MARIADB_MYSQL_LOCALHOST_GRANTS=RELOAD,PROCESS,LOCK TABLES,BINLOG MONITOR
+
+HealthCmd=healthcheck.sh --connect --innodb_initialized || exit 1
+HealthStartupInterval=10s
+HealthInterval=30s
+HealthTimeout=3s
+HealthRetries=5
+HealthStartPeriod=300s
+
+[Install]
+WantedBy=multi-user.target

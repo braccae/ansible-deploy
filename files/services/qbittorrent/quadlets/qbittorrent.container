@@ -1,0 +1,28 @@
+[Unit]
+Requires=network-online.target
+
+[Container]
+Image=lscr.io/linuxserver/qbittorrent:latest
+AutoUpdate=registry
+
+# PublishPort=8080:8080
+# PublishPort=6881:6881
+# PublishPort=6881:6881/udp
+Network=host
+
+Volume=/var/appdata/qbittorrent:/config
+Volume=/mnt/downloads:/downloads
+
+Environment=PUID=2700
+Environment=PGID=2700
+Environment=TZ=America/New_York
+Environment=WEBUI_PORT=8080
+Environment=TORRENTING_PORT=6881
+
+Environment=DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

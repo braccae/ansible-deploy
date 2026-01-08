@@ -1,0 +1,16 @@
+[Container]
+Environment=PUID=1000 PGID=1000 TZ=America/New_York
+Image=lscr.io/linuxserver/brave:latest
+# Pod=webtop.pod
+PublishPort=3000:3000
+PublishPort=3001:3001
+ShmSize=1gb
+Volume=/var/home/core/appdata/webtop/brave:/config
+AddDevice=/dev/dri/renderD128:/dev/dri/renderD128
+Environment=DRI_NODE=/dev/dri/renderD128
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
