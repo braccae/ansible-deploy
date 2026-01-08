@@ -1,5 +1,23 @@
 ---
 
+- name: Ensure borgmatic directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/borgmatic
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure borgmatic.d directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/borgmatic.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Write Default Borgmatic Config
   become: true
   ansible.builtin.copy:
@@ -9,15 +27,6 @@
     group: root
     mode: '600'
     force: true
-
-- name: Ensure borgmatic.service.d directory exists
-  become: true
-  ansible.builtin.file:
-    path: /etc/systemd/system/borgmatic.service.d
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
 
 - name: Ensure Backup runtime directory
   become: true
