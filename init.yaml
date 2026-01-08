@@ -12,6 +12,14 @@
       community.general.timezone:
         name: America/New_York
 
+    - name: Create Groups
+      become: true
+      ansible.builtin.group:
+        name: "{{ item.name }}"
+        gid: "{{ item.gid }}"
+        state: present
+      loop: "{{ service_users }}"
+
     - name: Create users
       become: true
       ansible.builtin.user:
@@ -21,14 +29,8 @@
         group: "{{ item.name }}"
         state: present
         expires: -1
-      loop: "{{ service_users }}"
-
-    - name: Create Groups
-      become: true
-      ansible.builtin.group:
-        name: "{{ item.name }}"
-        gid: "{{ item.gid }}"
-        state: present
+        hidden: false
+        password_lock: false
       loop: "{{ service_users }}"
 
     # - name: Correct ownership of user home directories
