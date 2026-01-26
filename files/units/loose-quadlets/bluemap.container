@@ -1,0 +1,12 @@
+[Container]
+Image=ghcr.io/braccae/franken-php:latest
+AutoUpdate=registry
+PublishPort=25565:25565
+Volume=%h/appdata/minecraft/bluemap/webroot:/var/www:z
+Volume=%h/appdata/minecraft/bluemap/config:/config:z
+Exec=--config /config/caddyfile
+
+
+[Install]
+# Start by default on boot
+WantedBy=default.target

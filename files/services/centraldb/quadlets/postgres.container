@@ -4,8 +4,8 @@ Description=PostgreSQL Central Database
 After=multi-user.target
 Restart=always
 
-[Service]
-ExecStartPre=systemd-tmpfiles --create --prefix=/tmp/borgmatic
+# [Service]
+# ExecStartPre=systemd-tmpfiles --create --prefix=/tmp/borgmatic
 
 [Container]
 Image=docker.io/pgvector/pgvector:pg17

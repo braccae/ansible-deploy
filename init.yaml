@@ -324,8 +324,8 @@
     - name: Setup Proxy
       ansible.builtin.include_tasks: files/services/proxy/tasks/install.yaml
 
-    # - name: Setup Crowdsec
-    #   ansible.builtin.include_tasks: files/services/proxy/tasks/install-crowdsec.yml
+    - name: Setup Crowdsec
+      ansible.builtin.include_tasks: files/services/proxy/tasks/install-crowdsec.yml
 
-    # - name: Setup Caddy
-    #   ansible.builtin.include_tasks: files/services/proxy/tasks/install-caddy.yml
+    - name: Setup Caddy
+      ansible.builtin.include_tasks: files/services/proxy/tasks/install-caddy.yml

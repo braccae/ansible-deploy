@@ -1,7 +1,7 @@
 [Container]
 Environment=DEEMIX_SERVER_PORT=6595
 Environment=DEEMIX_DATA_DIR=/config
-Environment=DEEMIX_MUSIC_DIR=/downloads
+Environment=DEEMIX_MUSIC_DIR=/mnt/Downloads
 Environment=DEEMIX_HOST=0.0.0.0
 Environment=DEEMIX_SINGLE_USER=true
 Environment=PUID=2700
@@ -13,8 +13,8 @@ PodmanArgs=--memory 8gb
 UserNS=keep-id
 # User=2700:2700
 PublishPort=6595:6595
-Volume=/var/home/media/appdata/deemix:/config:z
-Volume=/mnt/HDD/Downloads:/mnt/Downloads
+Volume=/var/appdata/deemix:/config:z
+Volume=/mnt/Downloads:/mnt/Downloads
 
 [Service]
 Restart=always

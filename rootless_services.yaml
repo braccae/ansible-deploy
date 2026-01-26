@@ -8,7 +8,7 @@
 
   tasks:
     - name: Install n8n
-      when: ansible_hostname in ['the-red-raktuber', 'pong']
+      when: ansible_hostname in ['chuck']
       vars:
         user: apps
         user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
@@ -23,7 +23,7 @@
       ansible.builtin.include_tasks: files/services/n8n/tasks/install.yaml
 
     - name: Install Matterbridge
-      when: ansible_hostname in ['the-red-raktuber']
+      when: ansible_hostname in ['chuck']
       vars:
         user: apps
         user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
@@ -31,22 +31,22 @@
         gid: "{{ user_data.gid }}"
       ansible.builtin.include_tasks: files/services/matterbridge/tasks/install.yaml
 
-    - name: Install openwebui
-      when: ansible_hostname in ['pong']
-      vars:
-        user: apps
-        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
-        uid: "{{ user_data.uid }}"
-        gid: "{{ user_data.gid }}"
-        base_url: "{{ openwebui.vars.BASE_URL }}"
-        embedding_model: "{{ openwebui.vars.EMBEDDING_MODEL }}"
-        secret_key: "{{ openwebui.secrets.SECRET_KEY }}"
-        db_pass: "{{ openwebui.secrets.DB_PASS }}"
-        db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
-      ansible.builtin.include_tasks: files/services/openwebui/tasks/install.yaml
+    # - name: Install openwebui
+    #   when: ansible_hostname in ['pong']
+    #   vars:
+    #     user: apps
+    #     user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+    #     uid: "{{ user_data.uid }}"
+    #     gid: "{{ user_data.gid }}"
+    #     base_url: "{{ openwebui.vars.BASE_URL }}"
+    #     embedding_model: "{{ openwebui.vars.EMBEDDING_MODEL }}"
+    #     secret_key: "{{ openwebui.secrets.SECRET_KEY }}"
+    #     db_pass: "{{ openwebui.secrets.DB_PASS }}"
+    #     db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+    #   ansible.builtin.include_tasks: files/services/openwebui/tasks/install.yaml
 
     - name: Shorts Bot Setup
-      when: ansible_hostname == 'the-red-raktuber'
+      when: ansible_hostname == 'chuck'
       block:
         - name: Ensure Shorts DB User
           community.postgresql.postgresql_user:
@@ -66,7 +66,7 @@
             state: present
 
     - name: Install Authentik
-      when: ansible_hostname in ['the-red-raktuber', 'pong']
+      when: ansible_hostname in ['chuck']
       vars:
         user: auth
         user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
@@ -81,7 +81,7 @@
       ansible.builtin.include_tasks: files/services/auth/tasks/install.yaml
 
     - name: Install searx-ng
-      when: ansible_hostname == 'the-red-raktuber'
+      when: ansible_hostname == 'chuck'
       vars:
         user: apps
         user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
@@ -91,42 +91,42 @@
         secret_key: "{{ searxng.secrets.SECRET_KEY }}"
       ansible.builtin.include_tasks: files/services/searx-ng/tasks/install.yaml
 
-    - name: Install Vaultwarden
-      when: ansible_hostname in ['pong']
-      vars:
-        user: auth
-        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
-        uid: "{{ user_data.uid }}"
-        gid: "{{ user_data.gid }}"
-        vaultwarden_db_pass: "{{ vaultwarden.secrets.DB_PASS }}"
-        db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
-        ts_proxykey: "{{ secrets.tailscale_proxykey }}"
-      ansible.builtin.include_tasks: files/services/vaultwarden/tasks/install.yaml
+    # - name: Install Vaultwarden
+    #   when: ansible_hostname in ['pong']
+    #   vars:
+    #     user: auth
+    #     user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+    #     uid: "{{ user_data.uid }}"
+    #     gid: "{{ user_data.gid }}"
+    #     vaultwarden_db_pass: "{{ vaultwarden.secrets.DB_PASS }}"
+    #     db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+    #     ts_proxykey: "{{ secrets.tailscale_proxykey }}"
+    #   ansible.builtin.include_tasks: files/services/vaultwarden/tasks/install.yaml
 
-    - name: Install IT Tools
-      when: ansible_hostname in ['pong']
-      vars:
-        user: apps
-        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
-        uid: "{{ user_data.uid }}"
-        gid: "{{ user_data.gid }}"
-        ts_proxykey: "{{ secrets.tailscale_proxykey }}"
-      ansible.builtin.include_tasks: files/services/it-tools/tasks/install.yaml
+    # - name: Install IT Tools
+    #   when: ansible_hostname in ['pong']
+    #   vars:
+    #     user: apps
+    #     user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+    #     uid: "{{ user_data.uid }}"
+    #     gid: "{{ user_data.gid }}"
+    #     ts_proxykey: "{{ secrets.tailscale_proxykey }}"
+    #   ansible.builtin.include_tasks: files/services/it-tools/tasks/install.yaml
 
-    - name: Install NocoDB
-      when: ansible_hostname in ['the-freezer']
-      vars:
-        user: apps
-        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
-        uid: "{{ user_data.uid }}"
-        gid: "{{ user_data.gid }}"
-        nocodb_public_url: "{{ nocodb.vars.BASE_URL }}"
-        nocodb_admin_email: "{{ nocodb.vars.ADMIN_EMAIL }}"
-        jwt_secret: "{{ nocodb.secrets.JWT_SECRET }}"
-        admin_password: "{{ nocodb.secrets.ADMIN_PASSWORD }}"
-        db_pass: "{{ nocodb.secrets.DB_PASS }}"
-        db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
-      ansible.builtin.include_tasks: files/services/nocodb/tasks/install.yaml
+    # - name: Install NocoDB
+    #   when: ansible_hostname in ['the-freezer']
+    #   vars:
+    #     user: apps
+    #     user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+    #     uid: "{{ user_data.uid }}"
+    #     gid: "{{ user_data.gid }}"
+    #     nocodb_public_url: "{{ nocodb.vars.BASE_URL }}"
+    #     nocodb_admin_email: "{{ nocodb.vars.ADMIN_EMAIL }}"
+    #     jwt_secret: "{{ nocodb.secrets.JWT_SECRET }}"
+    #     admin_password: "{{ nocodb.secrets.ADMIN_PASSWORD }}"
+    #     db_pass: "{{ nocodb.secrets.DB_PASS }}"
+    #     db_admin_pass: "{{ central_db.secrets.POSTGRES_ROOT_PASS }}"
+    #   ansible.builtin.include_tasks: files/services/nocodb/tasks/install.yaml
 
 - name: Dropins
   become: true
@@ -136,7 +136,7 @@
     restore: false
   tasks:
     - name: Proxy Dropin - PPC
-      when: ansible_hostname in ['the-red-raktuber', 'likes-it-cold']
+      when: ansible_hostname in ['chuck', 'likes-it-cold']
       become: true
       vars:
         upstream: "{{ pants_place_cloud_upstream }}"
@@ -149,7 +149,7 @@
         mode: "755"
 
     - name: Proxy Dropin - jellyfin
-      when: ansible_hostname in ['the-red-raktuber', 'likes-it-cold']
+      when: ansible_hostname in ['chuck', 'likes-it-cold']
       become: true
       vars:
         upstream: "{{ jellyfin_upstream }}"
@@ -161,31 +161,31 @@
         group: proxy
         mode: "755"
 
-    - name: Proxy Cockpit ws to tailscale
-      # when: ansible_hostname in ['pong', 'the-freezer']
-      become: true
-      vars:
-        domain: "https://{{ inventory_hostname }}.{{ secrets.tailscale_subdomain }}.ts.net"
-        upstream: "localhost:9090"
-      ansible.builtin.template:
-        dest: /var/home/proxy/appdata/caddy/caddyfile.d/00-cockpit.caddyfile
-        src: templates/caddyfile/caddyfile_https_ts.j2
-        owner: proxy
-        group: proxy
-        mode: "755"
+    # - name: Proxy Cockpit ws to tailscale
+    #   # when: ansible_hostname in ['pong', 'the-freezer']
+    #   become: true
+    #   vars:
+    #     domain: "https://{{ inventory_hostname }}.{{ secrets.tailscale_subdomain }}.ts.net"
+    #     upstream: "localhost:9090"
+    #   ansible.builtin.template:
+    #     dest: /var/home/proxy/appdata/caddy/caddyfile.d/00-cockpit.caddyfile
+    #     src: templates/caddyfile/caddyfile_https_ts.j2
+    #     owner: proxy
+    #     group: proxy
+    #     mode: "755"
 
-    - name: Proxy Dropin - nocodb
-      when: ansible_hostname in ['the-freezer']
-      become: true
-      vars:
-        upstream: "localhost:8080"
-        domain: "{{ nocodb.vars.BASE_URL }}"
-      ansible.builtin.template:
-        src: templates/caddyfile/caddyfile_http.j2
-        dest: /var/home/proxy/appdata/caddy/caddyfile.d/20-nocodb.caddyfile
-        owner: proxy
-        group: proxy
-        mode: "755"
+    # - name: Proxy Dropin - nocodb
+    #   when: ansible_hostname in ['the-freezer']
+    #   become: true
+    #   vars:
+    #     upstream: "localhost:8080"
+    #     domain: "{{ nocodb.vars.BASE_URL }}"
+    #   ansible.builtin.template:
+    #     src: templates/caddyfile/caddyfile_http.j2
+    #     dest: /var/home/proxy/appdata/caddy/caddyfile.d/20-nocodb.caddyfile
+    #     owner: proxy
+    #     group: proxy
+    #     mode: "755"
 
     - name: Reload Caddy
       ansible.builtin.systemd_service:

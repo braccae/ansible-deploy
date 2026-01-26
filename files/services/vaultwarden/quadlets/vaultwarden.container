@@ -8,8 +8,10 @@ Image=quay.io/vaultwarden/server:latest-alpine
 AutoUpdate=registry
 
 # Environment=DATABASE_URL=postgresql://[[user]:[password]@]host[:port][/database]
-Secret=vaultwarden_db,type=env,target=DATABASE_URL
-Pod=vaultwarden.pod
+# Secret=vaultwarden_db,type=env,target=DATABASE_URL
+# Pod=vaultwarden.pod
+
+Volume=%h/appdata/vaultwarden:/data:Z
 
 [Service]
 Restart=always

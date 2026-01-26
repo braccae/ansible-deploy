@@ -11,7 +11,7 @@ AutoUpdate=registry
 Network=host
 
 Volume=/var/appdata/qbittorrent:/config
-Volume=/mnt/downloads:/downloads
+Volume=/mnt/Downloads:/mnt/Downloads
 
 Environment=PUID=2700
 Environment=PGID=2700
