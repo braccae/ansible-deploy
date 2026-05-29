@@ -14,13 +14,11 @@ PublishPort=63600:6636
 # RADIUS
 PublishPort=18120:1812/udp
 
-UserNS=keep-id:uid={{ uid }},gid={{ gid }}
+# UserNS=keep-id:uid={{ uid }},gid={{ gid }}
 
 Volume=%h/appdata/auth/media:/media:z
 Volume=%h/appdata/auth/certs:/certs:z
 Volume=%h/appdata/auth/templates:/templates:z
-
-Volume=%h/appdata/auth/valkey:/data:z
 
 # Volume=auth_media:/media:z
 # Volume=auth_certs:/certs:Z

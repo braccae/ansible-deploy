@@ -22,14 +22,14 @@
         runner_auth_token: "{{ n8n.secrets.RUNNER_AUTH_TOKEN }}"
       ansible.builtin.include_tasks: files/services/n8n/tasks/install.yaml
 
-    - name: Install Matterbridge
-      when: ansible_hostname in ['chuck']
-      vars:
-        user: apps
-        user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
-        uid: "{{ user_data.uid }}"
-        gid: "{{ user_data.gid }}"
-      ansible.builtin.include_tasks: files/services/matterbridge/tasks/install.yaml
+    # - name: Install Matterbridge
+    #   when: ansible_hostname in ['chuck']
+    #   vars:
+    #     user: apps
+    #     user_data: "{{ service_users | selectattr('name', 'equalto', user) | first }}"
+    #     uid: "{{ user_data.uid }}"
+    #     gid: "{{ user_data.gid }}"
+    #   ansible.builtin.include_tasks: files/services/matterbridge/tasks/install.yaml
 
     # - name: Install openwebui
     #   when: ansible_hostname in ['pong']
@@ -190,5 +190,5 @@
     - name: Reload Caddy
       ansible.builtin.systemd_service:
         daemon_reload: false
-        name: caddy
+        name: proxy-pod
         state: "restarted"

@@ -111,7 +111,7 @@
 
 - name: Set repo_uri
   ansible.builtin.set_fact:
-    repo_uri: "{{ apps_borg_repo }}"
+    repo_uri: "{{ borgbase_repo }}"
 
 - name: Template Common Borgmatic Config
   become: true

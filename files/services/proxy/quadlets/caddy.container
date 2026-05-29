@@ -1,6 +1,5 @@
 [Unit]
 Description=Caddy
-After=crowdsec.service
 
 [Container]
 Image=ghcr.io/braccae/caddy:latest

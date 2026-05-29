@@ -1,0 +1,61 @@
+---
+- name: Update Proxmox systems
+  become: true
+  hosts: proxmox
+  vars:
+    # Replace this with your actual cache server IP or hostname
+    apt_cache_server: "192.168.8.195"
+    apt_cache_port: "3142"
+
+  tasks:
+    - name: Create APT proxy configuration file
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/00proxy
+        content: |
+          Acquire::http::Proxy "http://{{ apt_cache_server }}:{{ apt_cache_port }}";
+          Acquire::https::Proxy "DIRECT";
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Update APT cache to verify connection
+      ansible.builtin.apt:
+        update_cache: true
+      register: apt_result
+      ignore_errors: true
+
+    - name: Check if proxy is working
+      ansible.builtin.debug:
+        msg: "APT successfully updated using the proxy!"
+      when: apt_result is succeeded
+
+    - name: Update Proxmox VE packages
+      ansible.builtin.apt:
+        update_cache: true
+        state: latest
+        upgrade: full
+
+    # - name: Reboot if kernel was updated
+    #   ansible.builtin.reboot:
+    #     msg: "Rebooting to apply new kernel updates"
+    #     pre_reboot_delay: 10
+    #   when: "'linux-image' in apt_result.stdout"
+
+    - name: Download the update script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/update-apps.sh
+        dest: /tmp/update-apps.sh
+        mode: '0755'
+
+    - name: Execute the update script
+      ansible.builtin.command: /tmp/update-apps.sh
+      environment:
+        var_unattended: "yes"
+        var_skip_confirm: "yes"
+        var_auto_reboot: "yes"
+      register: script_output
+
+    - name: Cleanup the script
+      ansible.builtin.file:
+        path: /tmp/update-apps.sh
+        state: absent

@@ -164,9 +164,9 @@
     group: root
     mode: '755'
 
-- name: Reload Caddy
-  become: true
-  ansible.builtin.systemd_service:
-    daemon_reload: false
-    name: caddy
-    state: "restarted"
+# - name: Reload Caddy
+#   become: true
+#   ansible.builtin.systemd_service:
+#     daemon_reload: false
+#     name: caddy
+#     state: "restarted"

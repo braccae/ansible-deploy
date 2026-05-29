@@ -6,7 +6,7 @@ After=podman-user-wait-network-online.service
 PodName=search.pod
 PublishPort=8182:8080
 
-UserNS=keep-id:uid={{ uid }},gid={{ gid }}
+# UserNS=keep-id:uid={{ uid }},gid={{ gid }}
 
 [Install]
 WantedBy=default.target
