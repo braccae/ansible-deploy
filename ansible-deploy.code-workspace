@@ -13,6 +13,6 @@
 			"https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/playbook": "file:///var/home/pants/Projects/deployments/ansible-deploy/ping.yaml"
 		},
 		"redhat.telemetry.enabled": true,
-		"ansible.python.interpreterPath": "/usr/bin/python"
+		"ansible.python.interpreterPath": ""
 	}
 }

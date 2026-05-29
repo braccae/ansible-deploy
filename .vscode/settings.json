@@ -12,5 +12,5 @@
     },
     "redhat.telemetry.enabled": true,
     "birdseye.pythonPath": "python",
-    "ansible.python.interpreterPath": "./.venv/bin/python"
+    "ansible.python.interpreterPath": ""
 }

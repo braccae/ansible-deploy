@@ -29,17 +29,41 @@
         msg: "APT successfully updated using the proxy!"
       when: apt_result is succeeded
 
-    - name: Update Proxmox VE packages
+    - name: Ensure the package cache is up to date
       ansible.builtin.apt:
         update_cache: true
-        state: latest
-        upgrade: full
+        cache_valid_time: 3600
 
-    # - name: Reboot if kernel was updated
-    #   ansible.builtin.reboot:
-    #     msg: "Rebooting to apply new kernel updates"
-    #     pre_reboot_delay: 10
-    #   when: "'linux-image' in apt_result.stdout"
+    - name: Upgrade all installed packages (Standard Upgrade)
+      ansible.builtin.apt:
+        upgrade: true
+
+    - name: Run Dist-Upgrade (Required for Proxmox kernel & core updates)
+      ansible.builtin.apt:
+        upgrade: dist
+      register: upgrade_result
+
+    - name: Remove useless packages from the cache
+      ansible.builtin.apt:
+        autoclean: true
+
+    - name: Remove dependencies that are no longer required
+      ansible.builtin.apt:
+        autoremove: true
+
+    - name: Check if a reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required_file
+
+    - name: Reboot the server if a new kernel or core package requires it
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible after Proxmox updates"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 5
+        test_command: uptime
+      when: reboot_required_file.stat.exists
 
     - name: Download the update script
       ansible.builtin.get_url:
@@ -53,7 +77,10 @@
         var_unattended: "yes"
         var_skip_confirm: "yes"
         var_auto_reboot: "yes"
+        var_container: "all"
+        var_backup: "no"
       register: script_output
+      changed_when: true
 
     - name: Cleanup the script
       ansible.builtin.file:
