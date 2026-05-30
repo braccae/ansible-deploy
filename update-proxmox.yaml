@@ -1,13 +1,19 @@
 ---
-- name: Update Proxmox systems
+# =============================================================================
+# Play 1: Proxmox Host Updates (all nodes including PBS)
+# =============================================================================
+- name: Update Proxmox host packages
   become: true
   hosts: proxmox
+  # serial: 1  # Run one host at a time to avoid APT lock contention on shared IPs
   vars:
-    # Replace this with your actual cache server IP or hostname
     apt_cache_server: "192.168.8.195"
     apt_cache_port: "3142"
 
   tasks:
+    # =========================================================================
+    # PHASE 1: Proxmox Host Updates
+    # =========================================================================
     - name: Create APT proxy configuration file
       ansible.builtin.copy:
         dest: /etc/apt/apt.conf.d/00proxy
@@ -46,10 +52,18 @@
     - name: Remove useless packages from the cache
       ansible.builtin.apt:
         autoclean: true
+      retries: 3
+      delay: 30
+      register: autoclean_result
+      until: autoclean_result is succeeded
 
     - name: Remove dependencies that are no longer required
       ansible.builtin.apt:
         autoremove: true
+      retries: 3
+      delay: 30
+      register: autoremove_result
+      until: autoremove_result is succeeded
 
     - name: Check if a reboot is required
       ansible.builtin.stat:
@@ -65,24 +79,161 @@
         test_command: uptime
       when: reboot_required_file.stat.exists
 
-    - name: Download the update script
-      ansible.builtin.get_url:
-        url: https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/update-apps.sh
-        dest: /tmp/update-apps.sh
+# =============================================================================
+# Play 2: LXC Container App Updates (PVE nodes only)
+# =============================================================================
+- name: Update LXC container apps
+  become: true
+  hosts: proxmox_pve
+  vars:
+    # LXC update configuration (mirrors update-apps.sh env vars)
+    lxc_backup: false
+    lxc_backup_storage: "local"
+    lxc_container_selection: "all"  # all | all_running | all_stopped | comma-separated IDs
+    lxc_unattended: true
+    lxc_auto_reboot: true
+    lxc_continue_on_error: true
+    lxc_dry_run: false
+    lxc_tags: "community-script|proxmox-helper-scripts"
+
+  tasks:
+    # --- Step 1: Discover containers with community-script tags ---
+    - name: List all LXC containers
+      ansible.builtin.command: pct list
+      register: pct_list_raw
+      changed_when: false
+
+    - name: Parse container list
+      ansible.builtin.set_fact:
+        all_containers: >-
+          {{
+            pct_list_raw.stdout_lines[1:]
+            | map('trim')
+            | select('match', '.+')
+            | map('split')
+            | map('list')
+            | list
+          }}
+
+    - name: Filter containers by community-script tags
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          pct config "{{ item[0] }}" | grep -qE '[^-][; ]({{ lxc_tags }}).*'
+        executable: /bin/bash
+      loop: "{{ all_containers }}"
+      loop_control:
+        label: "{{ item[0] }} ({{ item[1] | default('unknown') }})"
+      register: tag_check
+      changed_when: false
+      failed_when: false
+
+    - name: Build list of tagged containers
+      ansible.builtin.set_fact:
+        tagged_containers: >-
+          {{
+            tag_check.results
+            | selectattr('rc', 'eq', 0)
+            | map(attribute='item')
+            | list
+          }}
+
+    - name: Select containers based on configuration
+      ansible.builtin.set_fact:
+        selected_container_ids: >-
+          {%- if lxc_container_selection == 'all' -%}
+            {{ tagged_containers | map(attribute=0) | list }}
+          {%- elif lxc_container_selection == 'all_running' -%}
+            {{ tagged_containers | selectattr(2, 'eq', 'running') | map(attribute=0) | list }}
+          {%- elif lxc_container_selection == 'all_stopped' -%}
+            {{ tagged_containers | selectattr(2, 'eq', 'stopped') | map(attribute=0) | list }}
+          {%- else -%}
+            {{ lxc_container_selection | split(',') | map('trim') | list }}
+          {%- endif -%}
+
+    - name: Display selected containers
+      ansible.builtin.debug:
+        msg: "Selected {{ selected_container_ids | length }} container(s) for update: {{ selected_container_ids | join(', ') }}"
+
+    - name: Fail if no containers matched
+      ansible.builtin.fail:
+        msg: "No containers matched the selection criteria: {{ lxc_container_selection }}"
+      when: selected_container_ids | length == 0
+
+    # --- Step 2: Create log directory ---
+    - name: Create update log directory
+      ansible.builtin.file:
+        path: /usr/local/community-scripts/update_apps
+        state: directory
         mode: '0755'
 
-    - name: Execute the update script
-      ansible.builtin.command: /tmp/update-apps.sh
-      environment:
-        var_unattended: "yes"
-        var_skip_confirm: "yes"
-        var_auto_reboot: "yes"
-        var_container: "all"
-        var_backup: "no"
-      register: script_output
-      changed_when: true
+    - name: Set log file path
+      ansible.builtin.set_fact:
+        update_log_file: >-
+          /usr/local/community-scripts/update_apps/{{
+            ansible_facts.date_time.date | replace('-', '')
+          }}_{{
+            ansible_facts.date_time.time | replace(':', '')
+          }}.log
 
-    - name: Cleanup the script
-      ansible.builtin.file:
-        path: /tmp/update-apps.sh
-        state: absent
+    - name: Initialize log file
+      ansible.builtin.copy:
+        dest: "{{ update_log_file }}"
+        content: "Update started: {{ ansible_facts.date_time.iso8601 }}\n"
+        mode: '0644'
+
+    # --- Step 3: Process each container ---
+    - name: Initialize update results
+      ansible.builtin.set_fact:
+        update_results: []
+        containers_needing_reboot: []
+
+    - name: Update LXC containers
+      ansible.builtin.include_tasks: files/tasks/update-lxc-container.yaml
+      loop: "{{ selected_container_ids }}"
+      loop_control:
+        loop_var: container_id
+        label: "CT {{ container_id }}"
+
+    # --- Step 4: Summary report ---
+    - name: Display update summary
+      ansible.builtin.debug:
+        msg: |
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          LXC Container Update Summary
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          {% for result in update_results %}
+          CT {{ result.ctid }}  {{ result.service }}  {{ result.status }}  {{ result.details }}
+          {% endfor %}
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Log file: {{ update_log_file }}
+      when: update_results | length > 0
+
+    - name: Write summary to log file
+      ansible.builtin.lineinfile:
+        path: "{{ update_log_file }}"
+        line: "{{ item }}"
+        insertafter: EOF
+      loop:
+        - ""
+        - "Update finished: {{ ansible_facts.date_time.iso8601 }}"
+        - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        - "{% for result in update_results %}CT {{ result.ctid }}  {{ result.service }}  {{ result.status }}  {{ result.details }}\n{% endfor %}"
+        - "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      changed_when: false
+
+    # --- Step 5: Handle container reboots ---
+    - name: Display containers needing reboot
+      ansible.builtin.debug:
+        msg: "The following containers require a reboot: {{ containers_needing_reboot | map(attribute='display') | join(', ') }}"
+      when: containers_needing_reboot | length > 0
+
+    - name: Reboot containers that require it
+      ansible.builtin.command: "pct reboot {{ item.ctid }}"
+      loop: "{{ containers_needing_reboot }}"
+      loop_control:
+        label: "CT {{ item.ctid }} ({{ item.hostname }})"
+      when:
+        - lxc_auto_reboot
+        - containers_needing_reboot | length > 0
+      changed_when: true

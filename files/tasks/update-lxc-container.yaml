@@ -1,0 +1,447 @@
+---
+# Included task: Update a single LXC container
+# Variables expected from caller:
+#   container_id        - The CTID to update
+#   lxc_backup          - Whether to backup before update
+#   lxc_backup_storage  - Storage target for backups
+#   lxc_unattended      - Run updates without interaction
+#   lxc_dry_run         - Only check for updates, don't apply
+#   lxc_continue_on_error - Continue to next container on failure
+#   update_log_file     - Path to the log file
+#   update_results      - Accumulator list (set_fact appended)
+#   containers_needing_reboot - Accumulator list
+
+# --- Get container status and config ---
+- name: "Get container status — CT {{ container_id }}"
+  ansible.builtin.command: "pct status {{ container_id }}"
+  register: ct_status_raw
+  changed_when: false
+
+- name: "Parse container status — CT {{ container_id }}"
+  ansible.builtin.set_fact:
+    ct_status: "{{ ct_status_raw.stdout.split()[-1] }}"
+
+- name: "Get container config — CT {{ container_id }}"
+  ansible.builtin.command: "pct config {{ container_id }}"
+  register: ct_config_raw
+  changed_when: false
+
+- name: "Check if container is a template — CT {{ container_id }}"
+  ansible.builtin.set_fact:
+    ct_is_template: "{{ 'template:' in ct_config_raw.stdout }}"
+
+- name: "Get OS type — CT {{ container_id }}"
+  ansible.builtin.set_fact:
+    ct_ostype: >-
+      {{ ct_config_raw.stdout_lines
+         | select('match', '^ostype')
+         | first
+         | default('ostype: unknown')
+         | regex_replace('^ostype:\s*', '') }}
+
+# --- Start container if it was stopped (and is not a template) ---
+- name: "Start stopped container for update — CT {{ container_id }}"
+  ansible.builtin.command: "pct start {{ container_id }}"
+  when:
+    - not ct_is_template
+    - ct_status == 'stopped'
+  register: ct_started
+  changed_when: ct_started.rc == 0
+
+- name: "Wait for container to start — CT {{ container_id }}"
+  ansible.builtin.pause:
+    seconds: 5
+  when:
+    - not ct_is_template
+    - ct_status == 'stopped'
+
+# --- Detect the service name from /usr/bin/update ---
+- name: "Pull update script from container — CT {{ container_id }}"
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      TMPDIR=$(mktemp -d)
+      pct pull "{{ container_id }}" /usr/bin/update "$TMPDIR/update" 2>/dev/null
+      if [ -f "$TMPDIR/update" ]; then
+        sed 's|.*/ct/||g' "$TMPDIR/update" | sed 's|\.sh).*||g' | head -1
+      fi
+      rm -rf "$TMPDIR"
+    executable: /bin/bash
+  register: ct_service_detect
+  changed_when: false
+  failed_when: false
+
+- name: "Set detected service name — CT {{ container_id }}"
+  ansible.builtin.set_fact:
+    ct_service: "{{ ct_service_detect.stdout | trim }}"
+
+# --- Skip if no update script found ---
+- name: "Skip container with no update script — CT {{ container_id }}"
+  when: ct_service == ''
+  block:
+    - name: "Log skip (no update script) — CT {{ container_id }}"
+      ansible.builtin.set_fact:
+        update_results: >-
+          {{ update_results + [{'ctid': container_id, 'service': '(unknown)', 'status': 'SKIPPED', 'details': 'No update script found in container'}] }}
+
+    - name: "Append to log file (skipped) — CT {{ container_id }}"
+      ansible.builtin.lineinfile:
+        path: "{{ update_log_file }}"
+        line: "Container {{ container_id }}: SKIPPED — no update script found"
+        insertafter: EOF
+      changed_when: false
+
+- name: "Process container update — CT {{ container_id }}"
+  when: ct_service != ''
+  block:
+    - name: "Display detected service — CT {{ container_id }}"
+      ansible.builtin.debug:
+        msg: "Detected service: {{ ct_service }}"
+
+    # --- Fetch the install script to determine build/run resource requirements ---
+    - name: "Fetch community-scripts install script — CT {{ container_id }}"
+      ansible.builtin.uri:
+        url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/{{ ct_service }}.sh"
+        return_content: true
+      register: ct_install_script
+      failed_when: false
+
+    # --- Parse resource requirements ---
+    - name: "Parse resource requirements — CT {{ container_id }}"
+      ansible.builtin.set_fact:
+        ct_build_cpu: >-
+          {{ ct_install_script.content | default('')
+             | regex_search('var_cpu[=:]+\"?(\d+)', '\1')
+             | default([ct_config_raw.stdout_lines | select('match', '^cores:') | first | default('cores: 1') | regex_replace('^cores:\s*', '')], true)
+             | first }}
+        ct_build_ram: >-
+          {{ ct_install_script.content | default('')
+             | regex_search('var_ram[=:]+\"?(\d+)', '\1')
+             | default([ct_config_raw.stdout_lines | select('match', '^memory:') | first | default('memory: 512') | regex_replace('^memory:\s*', '')], true)
+             | first }}
+        ct_run_cpu: >-
+          {{ ct_install_script.content | default('')
+             | regex_search('pct set \$CTID -cores\s+(\d+)', '\1')
+             | default([ct_config_raw.stdout_lines | select('match', '^cores:') | first | default('cores: 1') | regex_replace('^cores:\s*', '')], true)
+             | first }}
+        ct_run_ram: >-
+          {{ ct_install_script.content | default('')
+             | regex_search('pct set \$CTID -memory\s+(\d+)', '\1')
+             | default([ct_config_raw.stdout_lines | select('match', '^memory:') | first | default('memory: 512') | regex_replace('^memory:\s*', '')], true)
+             | first }}
+        ct_current_cpu: >-
+          {{ ct_config_raw.stdout_lines
+             | select('match', '^cores:')
+             | first
+             | default('cores: 1')
+             | regex_replace('^cores:\s*', '') }}
+        ct_current_ram: >-
+          {{ ct_config_raw.stdout_lines
+             | select('match', '^memory:')
+             | first
+             | default('memory: 512')
+             | regex_replace('^memory:\s*', '') }}
+
+    - name: "Check if build resources exceed run — CT {{ container_id }}"
+      ansible.builtin.set_fact:
+        ct_needs_resource_bump: >-
+          {{ (ct_build_cpu | int > ct_run_cpu | int) or (ct_build_ram | int > ct_run_ram | int) }}
+
+    # --- Backup container if requested ---
+    - name: "Backup container before update — CT {{ container_id }}"
+      ansible.builtin.command: >-
+        vzdump {{ container_id }}
+        --compress zstd
+        --storage {{ lxc_backup_storage }}
+        --notes-template "{{ '{{guestname}}' }} - community-scripts backup updater"
+      when: lxc_backup
+      register: ct_backup_result
+      changed_when: ct_backup_result.rc == 0
+
+    # --- Temporarily bump resources for build ---
+    - name: "Increase resources for build — CT {{ container_id }}"
+      ansible.builtin.command: >-
+        pct set {{ container_id }}
+        --cores {{ ct_build_cpu }}
+        --memory {{ ct_build_ram }}
+      when:
+        - ct_needs_resource_bump
+        - not lxc_dry_run
+      changed_when: true
+
+    # --- Dry-run: check for available updates without applying ---
+    - name: "Dry-run version check — CT {{ container_id }}"
+      when: lxc_dry_run
+      block:
+        - name: "Extract GitHub release info — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            ct_gh_check_line: >-
+              {{ ct_install_script.content | default('')
+                 | regex_search('check_for_gh_release\s+"([^"]+)"\s+"([^"]+)"', '\1', '\2')
+                 | default([], true) }}
+
+        - name: "Get installed version from container — CT {{ container_id }}"
+          ansible.builtin.shell:
+            cmd: |
+              set -o pipefail
+              pct exec "{{ container_id }}" -- bash -c \
+                "cat \$HOME/.{{ ct_gh_check_line[0] | default('')
+                | lower | replace(' ', '') }} 2>/dev/null" \
+                2>/dev/null || true
+            executable: /bin/bash
+          register: ct_installed_version_raw
+          changed_when: false
+          failed_when: false
+          when: ct_gh_check_line | length >= 2
+
+        - name: "Query latest GitHub release — CT {{ container_id }}"
+          ansible.builtin.uri:
+            url: "https://api.github.com/repos/{{ ct_gh_check_line[1] }}/releases/latest"
+            headers:
+              Accept: "application/vnd.github+json"
+              X-GitHub-Api-Version: "2022-11-28"
+            return_content: true
+          register: ct_gh_latest
+          failed_when: false
+          when: ct_gh_check_line | length >= 2
+
+        - name: "Set dry-run result — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            ct_dry_run_detail: >-
+              {%- if ct_gh_check_line | length < 2 -%}
+                no check_for_gh_release found — skipping
+              {%- elif ct_gh_latest is failed or ct_gh_latest.json is not defined -%}
+                cannot fetch latest version from {{ ct_gh_check_line[1] | default('unknown') }}
+              {%- else -%}
+                {%- set current = ct_installed_version_raw.stdout | default('') | trim | regex_replace('^v', '') -%}
+                {%- set latest = ct_gh_latest.json.tag_name | default('') | regex_replace('^v', '') -%}
+                {%- if current == '' -%}
+                  version unknown — latest: {{ latest }}
+              {%- elif current == latest -%}
+                  up to date ({{ current }})
+              {%- else -%}
+                  update available {{ current }} → {{ latest }}
+              {%- endif -%}
+              {%- endif -%}
+
+        - name: "Log dry-run result — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            update_results: >-
+              {{ update_results + [{'ctid': container_id, 'service': ct_service, 'status': 'DRY-RUN', 'details': ct_dry_run_detail}] }}
+
+        - name: "Display dry-run result — CT {{ container_id }}"
+          ansible.builtin.debug:
+            msg: >-
+              [DRY-RUN] CT {{ container_id }}
+              ({{ ct_service }}): {{ ct_dry_run_detail }}
+
+    # --- Actual update (non-dry-run) ---
+    - name: "Run container update — CT {{ container_id }}"
+      when: not lxc_dry_run
+      block:
+        - name: "Build update command — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            ct_update_cmd: >-
+              mkdir -p /tmp/.nc;
+              printf '#!/bin/sh\n:\n' > /tmp/.nc/clear;
+              chmod +x /tmp/.nc/clear;
+              export PATH=/tmp/.nc:$PATH;
+              export TERM=dumb;
+              {{ 'export PHS_SILENT=1;' if lxc_unattended else '' }}
+              update;
+
+        - name: "Determine shell for OS type — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            ct_shell: "{{ 'ash' if ct_ostype == 'alpine' else 'bash' }}"
+
+        - name: "Execute update inside container — CT {{ container_id }}"
+          ansible.builtin.command: >-
+            pct exec {{ container_id }} -- {{ ct_shell }} -c "{{ ct_update_cmd }}"
+          register: ct_update_result
+          failed_when: false
+          changed_when: ct_update_result.rc == 0
+
+        # --- Restore resources after update ---
+        - name: "Restore resources after build — CT {{ container_id }}"
+          ansible.builtin.command: >-
+            pct set {{ container_id }}
+            --cores {{ ct_run_cpu }}
+            --memory {{ ct_run_ram }}
+          when: ct_needs_resource_bump
+          changed_when: true
+
+        # --- Check if container needs reboot ---
+        - name: "Check if reboot is required — CT {{ container_id }}"
+          ansible.builtin.command: >-
+            pct exec {{ container_id }} -- test -e /var/run/reboot-required
+          register: ct_reboot_check
+          failed_when: false
+          changed_when: false
+
+        - name: "Get container hostname — CT {{ container_id }}"
+          ansible.builtin.command: "pct exec {{ container_id }} -- hostname"
+          register: ct_hostname
+          changed_when: false
+          when: ct_reboot_check.rc == 0
+
+        - name: "Add to reboot list — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            containers_needing_reboot: >-
+              {{ containers_needing_reboot + [{
+                'ctid': container_id,
+                'hostname': ct_hostname.stdout | default('unknown'),
+                'display': container_id ~ ' ('
+                  ~ ct_hostname.stdout | default('unknown') ~ ')'
+              }] }}
+          when: ct_reboot_check.rc == 0
+
+        # --- Shut down container if it was originally stopped ---
+        - name: "Shut down container (was stopped) — CT {{ container_id }}"
+          ansible.builtin.command: "pct shutdown {{ container_id }}"
+          when:
+            - not ct_is_template
+            - ct_status == 'stopped'
+          async: 120
+          poll: 0
+          changed_when: true
+
+        # --- Handle update result ---
+        - name: "Log successful update — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            update_results: >-
+              {{ update_results + [{
+                'ctid': container_id,
+                'service': ct_service,
+                'status': 'OK',
+                'details': 'Updated successfully'
+              }] }}
+          when: ct_update_result.rc == 0
+
+        - name: "Log skipped (interactive required) — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            update_results: >-
+              {{ update_results + [{
+                'ctid': container_id,
+                'service': ct_service,
+                'status': 'SKIPPED',
+                'details': 'Requires interactive mode (exit 75)'
+              }] }}
+          when: ct_update_result.rc == 75
+
+        - name: "Log skipped (under-provisioned) — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            update_results: >-
+              {{ update_results + [{
+                'ctid': container_id,
+                'service': ct_service,
+                'status': 'SKIPPED',
+                'details': 'Under-provisioned — increase CPU/RAM'
+              }] }}
+          when: ct_update_result.rc == 113
+
+        - name: "Log skipped (storage low on /boot) — CT {{ container_id }}"
+          ansible.builtin.set_fact:
+            update_results: >-
+              {{ update_results + [{
+                'ctid': container_id,
+                'service': ct_service,
+                'status': 'SKIPPED',
+                'details': 'Storage critically low on /boot (>80%)'
+              }] }}
+          when: ct_update_result.rc == 114
+
+        # --- Backup restore on failure ---
+        - name: "Restore from backup on failure — CT {{ container_id }}"
+          when:
+            - ct_update_result.rc not in [0, 75, 113, 114]
+            - lxc_backup
+          block:
+            - name: "Stop container for restore — CT {{ container_id }}"
+              ansible.builtin.command: "pct stop {{ container_id }}"
+              changed_when: true
+
+            - name: "Get rootfs storage — CT {{ container_id }}"
+              ansible.builtin.shell:
+                cmd: |
+                  set -o pipefail
+                  pct config {{ container_id }} \
+                    | awk -F '[:,]' '/rootfs/ {print $2}'
+                executable: /bin/bash
+              register: ct_lxc_storage
+              changed_when: false
+
+            - name: "Find latest backup — CT {{ container_id }}"
+              ansible.builtin.shell:
+                cmd: |
+                  set -o pipefail
+                  pvesm list "{{ lxc_backup_storage }}" 2>/dev/null \
+                    | awk -v ctid="{{ container_id }}" \
+                      '$1 ~ "vzdump-lxc-"ctid"-" || $1 ~ "/ct/"ctid"/" {print $1}' \
+                    | sort -r | head -n1
+                executable: /bin/bash
+              register: ct_backup_entry
+              changed_when: false
+
+            - name: "Fail if no backup found — CT {{ container_id }}"
+              ansible.builtin.fail:
+                msg: >-
+                  No backup found in storage {{ lxc_backup_storage }}
+                  for container {{ container_id }}
+              when: ct_backup_entry.stdout | trim == ''
+
+            - name: "Restore from backup — CT {{ container_id }}"
+              ansible.builtin.command: >-
+                pct restore {{ container_id }}
+                "{{ ct_backup_entry.stdout | trim }}"
+                --storage {{ ct_lxc_storage.stdout | trim }}
+                --force
+              changed_when: true
+
+            - name: "Start restored container — CT {{ container_id }}"
+              ansible.builtin.command: "pct start {{ container_id }}"
+              changed_when: true
+
+            - name: "Log restored from backup — CT {{ container_id }}"
+              ansible.builtin.set_fact:
+                update_results: >-
+                  {{ update_results + [{
+                    'ctid': container_id,
+                    'service': ct_service,
+                    'status': 'RESTORED',
+                    'details': 'Update failed (exit '
+                      ~ ct_update_result.rc ~ ') — restored from backup'
+                  }] }}
+
+        # --- Failure without backup ---
+        - name: "Handle failure without backup — CT {{ container_id }}"
+          when:
+            - ct_update_result.rc not in [0, 75, 113, 114]
+            - not lxc_backup
+          block:
+            - name: "Log update failure — CT {{ container_id }}"
+              ansible.builtin.set_fact:
+                update_results: >-
+                  {{ update_results + [{
+                    'ctid': container_id,
+                    'service': ct_service,
+                    'status': 'FAILED',
+                    'details': 'Exit code ' ~ ct_update_result.rc
+                  }] }}
+
+            - name: "Fail on error (unless continue) — CT {{ container_id }}"
+              ansible.builtin.fail:
+                msg: >-
+                  Update failed for container {{ container_id }}
+                  (exit code: {{ ct_update_result.rc }})
+              when: not lxc_continue_on_error
+
+    # --- Append to log file ---
+    - name: "Append result to log file — CT {{ container_id }}"
+      ansible.builtin.lineinfile:
+        path: "{{ update_log_file }}"
+        line: >-
+          Container {{ container_id }} ({{ ct_service }}):
+          {{ (update_results | last).status }}
+          — {{ (update_results | last).details }}
+        insertafter: EOF
+      changed_when: false
