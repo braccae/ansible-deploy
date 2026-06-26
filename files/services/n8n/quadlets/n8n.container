@@ -44,6 +44,13 @@ Environment=N8N_RUNNERS_EXTERNAL_ALLOW=*
 Environment=N8N_BLOCK_ENV_ACCESS_IN_NODE=true
 Environment=N8N_GIT_NODE_DISABLE_BARE_REPOS=true
 
+HealthCmd=wget --spider -q http://localhost:5678/healthz/readiness || exit 1
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=30s
+HealthOnFailure=kill
+
 [Service]
 Restart=always
 TimeoutSec=600
