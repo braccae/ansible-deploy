@@ -318,12 +318,12 @@
     #     kuma_push_url: "{{ borgmatic.secrets.UPTIME_KUMA }}"
     #     borgbase_repo: "{{ secrets.borgbase_repo }}"
     #   ansible.builtin.include_tasks: files/services/backup/tasks/install.yml
-
-    - name: Setup Central DB
-      ansible.builtin.include_tasks: files/services/centraldb/tasks/install.yml
-
-    - name: Setup Proxy
-      ansible.builtin.include_tasks: files/services/proxy/tasks/install.yaml
+    #
+    # - name: Setup Central DB
+    #   ansible.builtin.include_tasks: files/services/centraldb/tasks/install.yml
+    #
+    # - name: Setup Proxy
+    #   ansible.builtin.include_tasks: files/services/proxy/tasks/install.yaml
 
     # - name: Setup Crowdsec
     #   ansible.builtin.include_tasks: files/services/proxy/tasks/install-crowdsec.yml
